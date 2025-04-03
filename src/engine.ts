@@ -51,7 +51,9 @@ export class Engine {
       const placement = this.best_placement();
       if (placement) {
         this.input_queue = this.finesse(placement);
+        console.log(placement);
         console.log(this.input_queue);
+        this.context.queue.shift();
       } else {
         return;
       }
@@ -59,19 +61,19 @@ export class Engine {
 
     const frames_per_drop = this.settings.fps / this.settings.pps;
     const frames_per_input = frames_per_drop / this.input_queue.length;
-    
+
     const rel_frame = this.context.frame - this.last_drop_frame;
 
     if (rel_frame % frames_per_input === 0) {
-        const key = this.input_queue[this.rel_input_pos++];
-        this.send(key);
+      const key = this.input_queue[this.rel_input_pos++];
+      this.send(key);
 
-        if (key === Key.HardDrop) {
-            console.log('placed piece!');
-            this.last_drop_frame = this.context.frame;
-            this.rel_input_pos = 0;
-            this.input_queue = [];
-        }
+      if (key === Key.HardDrop) {
+        console.log("placed piece!");
+        this.last_drop_frame = this.context.frame;
+        this.rel_input_pos = 0;
+        this.input_queue = [];
+      }
     }
   }
 
@@ -88,21 +90,50 @@ export class Engine {
 
   // determine the objective best placement for the piece in either the current or hold queue.
   public best_placement(): Placement | undefined {
-    if (this.context.frame === 1)
-      return { piece: Piece.S, rotation: Rotation.South, x: 2, y: 1 };
-    else return undefined;
-    throw "unimplemented! this is hard as fuck!";
+    const allowed_pieces = this.context.queue.slice(0, this.settings.previews);
+
+    if (allowed_pieces.length === 0) { 
+        return undefined;
+    }
+
+    const z = call(
+      `C:\\Users\\mina\\projects\\sfce\\target\\debug\\sfce.exe -w4 -h20 --raw --no-hold -k ${this.settings.teleports ? "srsx" : "srs"} -y move -t "${this.context.board
+        .map((x) => x.map((y) => (y ? "G" : "E")).join(""))
+        .join("|")}" -p ${allowed_pieces.join("")} -q 1`,
+    );
+    const options = z.trim().split("\n");
+
+    // combo broke.
+    if (options.length === 0) {
+      return undefined;
+    }
+
+    const placements = options[0].trim().split(";").filter(x=>x);
+    if (placements.length === 0) {
+        return undefined;
+    }
+    const first_placement = placements[0];
+    const [piece, x, y, rotation] = first_placement.split(",");
+
+    return { piece: piece as Piece, x: Number(x), y: Number(y), rotation: rotation as Rotation };
   }
 
   // combo calculations are significantly easier whne you only have 3/4/5/6 minos
   public relevant_board_state(): Board {
-    throw "unimplemented";
+    const highest_nonair_spot = this.context.board.findIndex((x) =>
+      x.some((y) => y),
+    );
+    const nb = this.context.board.slice(
+      highest_nonair_spot,
+      highest_nonair_spot + 2,
+    );
+    return nb;
   }
 
   public finesse(placement: Placement): Array<Key> {
     return [
       ...(call(
-        `C:\\Users\\mina\\projects\\sfce\\target\\debug\\sfce.exe -w4 -k srsx -y inputs -t "${this.context.board
+        `C:\\Users\\mina\\projects\\sfce\\target\\debug\\sfce.exe -w4 -k ${this.settings.teleports ? "srsx" : "srs"} -y inputs -t "${this.context.board
           .map((x) => x.map((y) => (y ? "G" : "E")).join(""))
           .join(
             "|",
