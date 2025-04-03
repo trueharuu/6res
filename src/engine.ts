@@ -14,15 +14,6 @@ export interface EngineSettings {
 
     // whether or not the bot should use SRS-X 180 rotation teleports. keep this enabled for swag points.
     teleports: boolean;
-
-    // the speed the engine plays at while inside of a 'burst' period
-    burst_pps: number;
-
-    // the maximum amount of net recieved lines the bot will be okay with before entering a 'burst' period
-    burst_panic_threshold: number;
-
-    // the minimum amount of net sent lines the bot will be okay with before exiting a 'burst' period
-    burst_slack_threshold: number;
 }
 
 
@@ -37,12 +28,37 @@ export interface Context {
 
 export class Engine {
     public constructor(public settings: EngineSettings, public context: Context) {}
+    // these should *eventually* be placed.
+    public queued_placements: Array<Placement> = [];
 
-    public async loop(frame: number) {}
+    public async loop() {
+        if (this.queued_placements.length === 0) {
+            if (this.context.opener_phase) {
+                this.queued_placements.push(...this.opener(this.context.queue));
+            } else {
+                this.queued_placements.push(this.best_placement());
+            }
+        }
+        
+        if (this.queued_placements.length > 0) {
+            const placement = this.queued_placements.shift()!;
+            const finesse_keys = this.finesse(placement);
+            
+            for (const key of finesse_keys) {
+                await this.send(key);
+            }
+        }
+        
+        if (this.context.frame % Math.ceil(60 / this.settings.pps) === 0) {
+            await this.sync();
+        }
+    }
+    
+
     public async start() {
         while(true) {
             this.sync();
-            this.loop(this.context.frame);
+            this.loop();
         }
     }
 
