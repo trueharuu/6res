@@ -31,28 +31,27 @@ export class Engine {
     // these should *eventually* be placed.
     public queued_placements: Array<Placement> = [];
 
-    public async loop() {
-        if (this.queued_placements.length === 0) {
-            if (this.context.opener_phase) {
-                this.queued_placements.push(...this.opener(this.context.queue));
-            } else {
-                this.queued_placements.push(this.best_placement());
+        public async loop() {
+            if (this.queued_placements.length === 0) {
+                if (this.context.opener_phase) {
+                    this.queued_placements = this.opener(this.context.queue);
+                } else {
+                    this.queued_placements.push(this.best_placement());
+                }
             }
-        }
-        
-        if (this.queued_placements.length > 0) {
-            const placement = this.queued_placements.shift()!;
-            const finesse_keys = this.finesse(placement);
             
-            for (const key of finesse_keys) {
-                await this.send(key);
+            if (this.queued_placements.length > 0) {
+                const placement = this.queued_placements.shift()!;
+                const finesse_keys = this.finesse(placement);
+                
+                for (const key of finesse_keys) {
+                    await this.send(key);
+                }
             }
-        }
-        
-        if (this.context.frame % Math.ceil(60 / this.settings.pps) === 0) {
+            
             await this.sync();
         }
-    }
+    
     
 
     public async start() {
