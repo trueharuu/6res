@@ -1,91 +1,133 @@
-import { Board, Piece, Placement, Key } from "./defs";
+import { Board, Piece, Placement, Key, Rotation } from "./defs";
 import { opener_db } from "./opener_db";
+import { call } from "./tools";
 
 export interface EngineSettings {
-    // the base speed the engine will play at.
-    pps: number;
+  // the base speed the engine will play at.
+  pps: number;
 
-    // the maximum amount of piece previews the bot is allowed to use for combo.
-    previews: number;
+  // frames per second.
+  fps: number;
 
-    // the maximum amount of *extra* previews that the bot could consider for later combos
-    // this does NOT use the actual queue, and will instead try all possible bags of this size as an extra consideration
-    guesses: number;
+  // the maximum amount of piece previews the bot is allowed to use for combo.
+  previews: number;
 
-    // whether or not the bot should use SRS-X 180 rotation teleports. keep this enabled for swag points.
-    teleports: boolean;
+  // the maximum amount of *extra* previews that the bot could consider for later combos
+  // this does NOT use the actual queue, and will instead try all possible bags of this size as an extra consideration
+  guesses: number;
+
+  // whether or not the bot should use SRS-X 180 rotation teleports. keep this enabled for swag points.
+  teleports: boolean;
 }
 
-
 export interface Context {
-    board: Board;
-    queue: Array<Piece>;
-    hold: Piece | undefined;
-    opener_phase: boolean;
-    bursting: boolean;
-    frame: number;
+  board: Board;
+  queue: Array<Piece>;
+  hold: Piece | undefined;
+  opener_phase: boolean;
+  bursting: boolean;
+  frame: number;
 }
 
 export class Engine {
-    public constructor(public settings: EngineSettings, public context: Context) {}
-    // these should *eventually* be placed.
-    public queued_placements: Array<Placement> = [];
+  public constructor(
+    public settings: EngineSettings,
+    public context: Context,
+  ) {}
 
-        public async loop() {
-            if (this.queued_placements.length === 0) {
-                if (this.context.opener_phase) {
-                    this.queued_placements = this.opener(this.context.queue);
-                } else {
-                    this.queued_placements.push(this.best_placement());
-                }
-            }
-            
-            if (this.queued_placements.length > 0) {
-                const placement = this.queued_placements.shift()!;
-                const finesse_keys = this.finesse(placement);
-                
-                for (const key of finesse_keys) {
-                    await this.send(key);
-                }
-            }
-            
-            await this.sync();
-        }
+  // these should *eventually* be performed. all `HardDrop` inputs should be sent to fit exactly `pps` (pieces per second)
+  // all inputs in-between `HardDrop` inputs should be spaced evenly between the `pps` intervals.
+  // ie. if `pps=1`, and `[CW, CW, HardDrop, CW, HardDrop]`, the whole sequence up to the first `HardDrop` should take 1 second
+  // but each input within it should be 0.333 seconds apart. the same is true for the second series of inputs up to the 2nd `HardDrop`
+  // with each input being 0.5s apart.
+  public input_queue: Array<Key> = [];
+  public rel_input_pos: number = 0;
+  public last_drop_frame: number = 0;
+
+  public async loop() {
+    console.log("frame", this.context.frame);
+    // console.log(this.input_queue);
+    if (this.input_queue.length === 0) {
+      const placement = this.best_placement();
+      if (placement) {
+        this.input_queue = this.finesse(placement);
+        console.log(this.input_queue);
+      } else {
+        return;
+      }
+    }
+
+    const frames_per_drop = this.settings.fps / this.settings.pps;
+    const frames_per_input = frames_per_drop / this.input_queue.length;
     
-    
+    const rel_frame = this.context.frame - this.last_drop_frame;
 
-    public async start() {
-        while(true) {
-            this.sync();
-            this.loop();
+    if (rel_frame % frames_per_input === 0) {
+        const key = this.input_queue[this.rel_input_pos++];
+        this.send(key);
+
+        if (key === Key.HardDrop) {
+            console.log('placed piece!');
+            this.last_drop_frame = this.context.frame;
+            this.rel_input_pos = 0;
+            this.input_queue = [];
         }
     }
+  }
 
-    // determine the objective best placement for the piece in either the current or hold queue.
-    public best_placement(): Placement {
-        throw 'unimplemented! this is hard as fuck!';
+  public async start() {
+    while (true) {
+      if (this.context.frame > 60) {
+        break;
+      }
+      this.loop();
+      this.context.frame++;
+      this.sync(this.context);
     }
+  }
 
-    // combo calculations are significantly easier whne you only have 3/4/5/6 minos
-    public relevant_board_state(): Board {
-        throw 'unimplemented';
-    }
+  // determine the objective best placement for the piece in either the current or hold queue.
+  public best_placement(): Placement | undefined {
+    if (this.context.frame === 1)
+      return { piece: Piece.S, rotation: Rotation.South, x: 2, y: 1 };
+    else return undefined;
+    throw "unimplemented! this is hard as fuck!";
+  }
 
-    public finesse(placement: Placement): Array<Key> {
-        // todo! this is not how you place pieces man!
-        return [Key.HardDrop];
-    }
+  // combo calculations are significantly easier whne you only have 3/4/5/6 minos
+  public relevant_board_state(): Board {
+    throw "unimplemented";
+  }
 
-    // sends a single input to the game
-    public async send(key: Key) {
-        throw 'unimplemented';
-    }
+  public finesse(placement: Placement): Array<Key> {
+    return [
+      ...(call(
+        `C:\\Users\\mina\\projects\\sfce\\target\\debug\\sfce.exe -w4 -k srsx -y inputs -t "${this.context.board
+          .map((x) => x.map((y) => (y ? "G" : "E")).join(""))
+          .join(
+            "|",
+          )}" -p${placement.piece} -x${placement.x} -y${placement.y} -r${placement.rotation}`,
+      )
+        .trim()
+        .split(",") as Array<Key>),
+      Key.HardDrop,
+    ];
+  }
 
-    // attempt to recieve the current board and next/hold queues
-    public async sync() {}
+  // sends a single input to the game
+  public async send(key: Key) {
+    console.log(`sending ${key}`);
+  }
 
-    // finds a recommended set of placements during the opener phase
-    public opener(queue: Array<Piece>): Array<Placement> {
-        return opener_db.find(x=>x.queues.some(x=>x.join('') === queue.join('')))!.placements;
-    }
+  // attempt to recieve the current board and next/hold queues
+  public async sync(context: Context) {
+    this.context = context;
+  }
+
+  // finds a recommended set of placements during the opener phase
+  public opener(queue: Array<Piece>): Array<Placement> {
+    return opener_db.find((x) =>
+      x.queues.some((x) => x.join("") === queue.join("")),
+    )!.placements;
+  }
 }
