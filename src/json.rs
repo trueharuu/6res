@@ -16,3 +16,9 @@ macro_rules! query {
     };
 }
 
+#[macro_export]
+macro_rules! message {
+    ($($t:tt)*) => {
+        ::websocket::Message::text(::serde_json::json!($($t)*).to_string())
+    };
+}

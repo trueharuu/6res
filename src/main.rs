@@ -1,4 +1,5 @@
 pub mod json;
+pub mod ribbon;
 pub mod ty;
 
 use anyhow::bail;
@@ -6,8 +7,9 @@ use reqwest::{
     Client,
     header::{HeaderMap, HeaderValue},
 };
+use ribbon::Ribbon;
 use serde_json::Value;
-use ty::{Environment, User};
+use ty::Environment;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -23,13 +25,14 @@ async fn main() -> anyhow::Result<()> {
     );
     let cl = Client::builder().default_headers(headers).build()?;
     // get server state
-    let z: Environment = cl
+    let _z: Environment = cl
         .get("https://tetr.io/api/server/environment")
         .send()
         .await?
         .json()
         .await?;
-    dbg!(&z);
+
+    // dbg!(&query!(_z.signature, as_object));
 
     // get user data
     let u: Value = cl
@@ -50,18 +53,14 @@ async fn main() -> anyhow::Result<()> {
         .json()
         .await?;
 
-    dbg!(&w);
+    // dbg!(&w);
 
     let endpoint = query!(w.endpoint, as_str);
 
-    let mut ws = websocket::ClientBuilder::new(&format!("https://tetr.io{endpoint}"))
-        .unwrap()
-        .connect(None)
-        .unwrap();
+    // println!("{}", serde_json::to_value(Packet::New).unwrap().to_string());
+    let mut r = Ribbon::new(token, endpoint.to_string(), _z.signature);
 
-    for z in ws.incoming_messages() {
-        dbg!(z?);
-    }
-    
+    r.spin()?;
+
     Ok(())
 }
