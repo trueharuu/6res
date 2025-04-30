@@ -79,11 +79,101 @@ pub enum Packet {
     SocialOnline(usize),
     #[serde(rename = "server.authorize")]
     ServerAuthorize {
-        handling: Handling,
-        signature: Signature,
-        token: String,
-
+        handling: Option<Handling>,
+        signature: Option<Signature>,
+        token: Option<String>,
     },
+    Ping {
+        recvid: Option<usize>,
+    },
+    #[serde(rename = "social.presence")]
+    SocialPresence(Value),
+    #[serde(rename = "social.dm")]
+    SocialDm {
+        data: Dm,
+        id: String,
+        stream: String,
+        ts: String,
+    },
+    #[serde(rename = "social.notification")]
+    SocialNotification {
+        data: SocialNotification,
+        _id: String,
+        seen: bool,
+
+        stream: String,
+        ts: String,
+        #[serde(rename = "type")]
+        kind: SocialNotificationType,
+    },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum SocialNotification {
+    Test {
+        message: String,
+    },
+    Announcement {
+        pri: Option<String>,
+        sec: Option<String>,
+        img_main: Option<String>,
+        img_sub: Option<String>,
+        header: String,
+        content: String,
+        action: Option<String>,
+    },
+
+    SupporterNew,
+    SupporterExpired,
+    SupporterGift {
+        userid: String,
+        username: String,
+        avatar_revision: Option<String>,
+        months: usize,
+    },
+
+    SupporterSpecialthanks,
+    SupporterExpiring {
+        expires: String,
+    },
+    Friend {
+        relationship: Relationship,
+    },
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Relationship {
+    pub ismutual: bool,
+    pub from: RelationshipParty,
+    pub to: RelationshipParty,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RelationshipParty {
+    pub _id: String,
+    pub username: String,
+    pub avatar_revision: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SocialNotificationType {
+    Test,
+    Announcement,
+    SupporterNew,
+    SupporterGift,
+    SupporterSpecialthanks,
+    SupporterExpiring,
+    SupporterExpired,
+    Friend,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Dm {
+    content: String,
+    content_safe: String,
+    system: bool,
+    user: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

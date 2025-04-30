@@ -9,7 +9,7 @@ use reqwest::{
 };
 use ribbon::Ribbon;
 use serde_json::Value;
-use ty::Environment;
+use ty::{Environment, Packet, Relationship, RelationshipParty, SocialNotification, SocialNotificationType};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -57,10 +57,36 @@ async fn main() -> anyhow::Result<()> {
 
     let endpoint = query!(w.endpoint, as_str);
 
-    // println!("{}", serde_json::to_value(Packet::New).unwrap().to_string());
-    let mut r = Ribbon::new(token, endpoint.to_string(), _z.signature);
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&Packet::SocialNotification {
+            _id: "".to_string(),
+            stream: "".to_string(),
+            ts: "".to_string(),
+            kind: SocialNotificationType::Friend,
+            seen: false,
+            data: SocialNotification::Friend {
+                relationship: Relationship {
+                    from: RelationshipParty {
+                        _id: "".to_string(),
+                        username: "mina".to_string(),
+                        avatar_revision: None
+                    },
+                    to: RelationshipParty {
+                        _id: "".to_string(),
+                        username: "lfbot".to_string(),
+                        avatar_revision: None
+                    },
+                    ismutual: true,
+                }
+            }
+        })
+        .unwrap()
+        .to_string()
+    );
 
-    r.spin()?;
+    // let mut r = Ribbon::new(token, endpoint.to_string(), _z.signature);
+    // r.spin().await?;
 
     Ok(())
 }
