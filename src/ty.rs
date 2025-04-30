@@ -96,16 +96,19 @@ pub enum Packet {
         ts: String,
     },
     #[serde(rename = "social.notification")]
-    SocialNotification {
-        data: SocialNotification,
-        _id: String,
-        seen: bool,
-
-        stream: String,
-        ts: String,
-        #[serde(rename = "type")]
-        kind: SocialNotificationType,
+    SocialNotification(Value),
+    #[serde(rename = "social.invite")]
+    SocialInvite {
+        roomid: String,
+        roomname: String,
+        roomname_safe: Option<String>,
+        sender: String,
     },
+    #[serde(rename = "room.join")]
+    RoomJoin(String),
+    #[serde(rename = "server.migrate")]
+    ServerMigrate { endpoint: String, flag: String, name: String },
+    
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

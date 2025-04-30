@@ -5,15 +5,18 @@ use std::{
 
 use anyhow::anyhow;
 use async_recursion::async_recursion;
+use async_tungstenite::tungstenite::{http::Uri, stream::MaybeTlsStream, Message, Utf8Bytes, WebSocket};
+use reqwest::Client;
 use serde_json::Value;
-use tungstenite::{
-    Message, Utf8Bytes, WebSocket, accept, connect, http::Uri, stream::MaybeTlsStream,
-};
 use url::Url;
 
-use crate::ty::{Handling, Packet, Signature};
+use crate::{
+    query,
+    ty::{Handling, Packet, Signature},
+};
 
 pub struct Ribbon {
+    pub rq: Client,
     pub endpoint: String,
     pub token: String,
     pub ws: Option<WebSocket<MaybeTlsStream<TcpStream>>>,
@@ -27,8 +30,9 @@ pub struct Session {
 }
 
 impl Ribbon {
-    pub fn new(token: String, endpoint: String, signature: Signature) -> Self {
+    pub fn new(token: String, endpoint: String, signature: Signature, rq: Client) -> Self {
         Self {
+            rq,
             endpoint: endpoint.clone(),
             token,
             ws: None,
@@ -37,7 +41,9 @@ impl Ribbon {
         }
     }
     pub fn send(&mut self, msg: Packet) -> anyhow::Result<()> {
-        println!("\x1b[1;32mSEND\x1b[0m {msg:?}");
+        if !matches!(msg, Packet::Ping { .. }) {
+            println!("\x1b[1;32mSEND\x1b[0m {msg:?}");
+        }
         let z = serde_json::to_string(&msg)?;
         // dbg!(&z);
         self.ws
@@ -49,7 +55,9 @@ impl Ribbon {
 
     #[async_recursion]
     pub async fn recv(&mut self, value: Packet) -> anyhow::Result<()> {
-        println!("\x1b[1;36mRECV\x1b[0m {value:?}");
+        if !matches!(value, Packet::Ping { .. }) {
+            println!("\x1b[1;36mRECV\x1b[0m {value:?}");
+        }
         match value {
             Packet::Packets { packets } => {
                 for packet in packets {
@@ -73,9 +81,37 @@ impl Ribbon {
                 ))?;
             }
 
-            Packet::Ping { recvid } => {
-                tokio::time::sleep(Duration::from_secs(5)).await;
-                self.send(Packet::Ping { recvid: None })?;
+            Packet::Ping { .. } => {
+                // todo: respond to pings, asynchronously
+            }
+
+            Packet::SocialNotification(z) => {
+                if query!(z.type, as_str) == "friend" {
+                    // println!("i got added!");
+                    let fr = query!(z.data.relationship.from._id, as_str);
+                    println!("{fr}");
+                    self.rq
+                        .post("https://tetr.io/api/relationships/friend")
+                        .body(serde_json::json!({"user":fr}).to_string())
+                        .send()
+                        .await?;
+                }
+            }
+
+            Packet::SocialInvite {
+                roomid,
+                ..
+            } => {
+                println!("got invited to {roomid}");
+                // todo: join
+                self.send(Packet::RoomJoin(roomid))?;
+            }
+
+            Packet::ServerMigrate { endpoint, .. } => {
+                self.endpoint = endpoint;
+                self.ws.as_mut().unwrap().close(None)?;
+                self.ws = None;
+                self.spin().await?;
             }
             _ => {}
         }
@@ -89,30 +125,11 @@ impl Ribbon {
             .authority("tetr.io")
             .path_and_query(self.endpoint.clone())
             .build()?;
-        let (socket, _) = connect(url)?;
-
-        self.ws = Some(socket);
+        
+        // let socket = <do something with `uri` that makes an async ws>
+        // self.ws = Some(socket);
         self.send(Packet::New)?;
-        loop {
-            let msg = self.ws.as_mut().ok_or(anyhow!("unreachable"))?.read()?;
-
-            if msg.is_close() {
-                println!("\x1b[1;31mEXIT\x1b[0m");
-                break;
-            }
-
-            let packet: Value = serde_json::from_str(msg.into_text()?.as_str())?;
-
-            match serde_json::from_value(packet.clone()) {
-                Ok(t) => {
-                    self.recv(t).await?;
-                }
-                Err(e) => println!(
-                    "\x1b[1;31mFAIL\x1b[0m failed to parse: {}, {e}",
-                    serde_json::to_string_pretty(&packet)?
-                ),
-            }
-        }
+        
 
         Ok(())
     }
