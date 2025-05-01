@@ -9,10 +9,13 @@ use reqwest::{
 };
 use ribbon::Ribbon;
 use serde_json::Value;
+use tracing::Level;
+use tracing_subscriber::util::SubscriberInitExt;
 use ty::Environment;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
     let token = dotenv::var("TOKEN")?;
 
     let mut headers = HeaderMap::new();
@@ -59,8 +62,8 @@ async fn main() -> anyhow::Result<()> {
 
     let endpoint = query!(w.endpoint, as_str);
 
-    let r = Ribbon::new(token, endpoint.to_string());
-    // r.spin().await?;
+    let mut r = Ribbon::new(token, endpoint.to_string());
+    r.spin().await;
 
     //
 
