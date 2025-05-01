@@ -59,8 +59,8 @@ async fn main() -> anyhow::Result<()> {
 
     let endpoint = query!(w.endpoint, as_str);
 
-    let mut r = Ribbon::new(token, endpoint.to_string(), _z.signature, rq);
-    r.spin().await?;
+    let r = Ribbon::new(token, endpoint.to_string());
+    // r.spin().await?;
 
     //
 
