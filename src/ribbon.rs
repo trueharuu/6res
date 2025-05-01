@@ -128,7 +128,7 @@ impl Ribbon {
         
         // let socket = <do something with `uri` that makes an async ws>
         // self.ws = Some(socket);
-        self.send(Packet::New)?;
+        // self.send(Packet::New)?;
         
 
         Ok(())

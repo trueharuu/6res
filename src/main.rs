@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
         .json()
         .await?;
 
-    dbg!(&u);
+    // dbg!(&u);
 
     if query!(u.user.role, as_str) != "bot" {
         bail!("this is not a bot account!");
