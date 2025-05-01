@@ -1,14 +1,10 @@
-use std::{
-    net::{TcpListener, TcpStream},
-    time::{Duration, Instant},
-};
+use std::net::TcpStream;
 
-use anyhow::anyhow;
 use async_recursion::async_recursion;
-use async_tungstenite::tungstenite::{http::Uri, stream::MaybeTlsStream, Message, Utf8Bytes, WebSocket};
+use async_tungstenite::tungstenite::{
+    Message, Utf8Bytes, WebSocket, http::Uri, stream::MaybeTlsStream,
+};
 use reqwest::Client;
-use serde_json::Value;
-use url::Url;
 
 use crate::{
     query,
@@ -41,9 +37,9 @@ impl Ribbon {
         }
     }
     pub fn send(&mut self, msg: Packet) -> anyhow::Result<()> {
-        if !matches!(msg, Packet::Ping { .. }) {
-            println!("\x1b[1;32mSEND\x1b[0m {msg:?}");
-        }
+        // if !matches!(msg, Packet::Ping { .. }) {
+        println!("\x1b[1;32mSEND\x1b[0m {msg:?}");
+        // }
         let z = serde_json::to_string(&msg)?;
         // dbg!(&z);
         self.ws
@@ -55,9 +51,9 @@ impl Ribbon {
 
     #[async_recursion]
     pub async fn recv(&mut self, value: Packet) -> anyhow::Result<()> {
-        if !matches!(value, Packet::Ping { .. }) {
-            println!("\x1b[1;36mRECV\x1b[0m {value:?}");
-        }
+        // if !matches!(value, Packet::Ping { .. }) {
+        println!("\x1b[1;36mRECV\x1b[0m {value:?}");
+        // }
         match value {
             Packet::Packets { packets } => {
                 for packet in packets {
@@ -87,7 +83,6 @@ impl Ribbon {
 
             Packet::SocialNotification(z) => {
                 if query!(z.type, as_str) == "friend" {
-                    // println!("i got added!");
                     let fr = query!(z.data.relationship.from._id, as_str);
                     println!("{fr}");
                     self.rq
@@ -98,20 +93,13 @@ impl Ribbon {
                 }
             }
 
-            Packet::SocialInvite {
-                roomid,
-                ..
-            } => {
-                println!("got invited to {roomid}");
-                // todo: join
+            Packet::SocialInvite { roomid, .. } => {
                 self.send(Packet::RoomJoin(roomid))?;
             }
 
             Packet::ServerMigrate { endpoint, .. } => {
+                println!("\x1b[1;33mMOVE\x1b[0m {endpoint}");
                 self.endpoint = endpoint;
-                self.ws.as_mut().unwrap().close(None)?;
-                self.ws = None;
-                self.spin().await?;
             }
             _ => {}
         }
@@ -120,16 +108,15 @@ impl Ribbon {
     }
     pub async fn spin(&mut self) -> anyhow::Result<()> {
         // println!("{}", self.endpoint);
-        let url = Uri::builder()
+        let _url = Uri::builder()
             .scheme("wss")
             .authority("tetr.io")
             .path_and_query(self.endpoint.clone())
             .build()?;
-        
+
         // let socket = <do something with `uri` that makes an async ws>
         // self.ws = Some(socket);
         // self.send(Packet::New)?;
-        
 
         Ok(())
     }
