@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -6,7 +8,7 @@ pub struct Environment {
     pub signature: Signature,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 
 pub struct Signature {
     catalog: Value,
@@ -33,6 +35,12 @@ pub struct Signature {
     zenith_cpu_count: f64,
     zenith_duoisfree: bool,
     zenith_freemod: bool,
+}
+
+impl Debug for Signature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.version)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

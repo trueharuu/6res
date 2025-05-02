@@ -2,16 +2,17 @@ pub mod json;
 pub mod ribbon;
 pub mod ty;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use anyhow::bail;
-use futures::{SinkExt, StreamExt};
+use futures::StreamExt;
 use reqwest::{
     Client,
     header::{HeaderMap, HeaderValue},
 };
 use ribbon::Ribbon;
 use serde_json::Value;
+use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 use ty::{Environment, Packet};
 
@@ -64,37 +65,43 @@ async fn main() -> anyhow::Result<()> {
 
     let endpoint = query!(w.endpoint, as_str).to_string();
 
-    let tsr = Arc::new(Ribbon {
+    let tsr = Arc::new(Mutex::new(Ribbon {
         endpoint: endpoint.clone(),
-    });
+        signature: _z.signature,
+        session: None,
+        token: token.clone(),
+    }));
     tokio::spawn(async move {
         let ribbon = tsr.clone();
-        tracing::info!("{}", ribbon.uri());
-        let mut ws: ribbon::Ws = tokio_tungstenite::connect_async(ribbon.uri())
+        tracing::info!("{}", ribbon.lock().await.uri());
+        let ws: ribbon::Ws = tokio_tungstenite::connect_async(ribbon.lock().await.uri())
             .await
             .unwrap()
             .0;
 
-        
-        tracing::info!("connected to {endpoint}");
+        let (tx, mut rx) = ws.split();
+        let tt = Arc::new(Mutex::new(tx));
 
-        Ribbon::send(ribbon.clone(), &mut ws, Packet::New).await;
+        Ribbon::send(ribbon.clone(), tt.clone(), Packet::New).await;
         loop {
-            let parcel = ws.next().await; // error here
+            let parcel = rx.next().await; // error here
             if let Some(t) = parcel {
                 match t {
                     Ok(content) => match content {
                         Message::Text(text) => {
                             let cpy = ribbon.clone();
                             let packet: Packet = serde_json::from_str(&text).unwrap();
+                            let tx = tt.clone();
                             tokio::spawn(async move {
-                                Ribbon::recv(cpy, &mut ws, packet).await;
-                            }).await;
+                                Ribbon::recv(cpy, tx, packet).await;
+                            })
+                            .await
+                            .unwrap();
                         }
 
                         Message::Close(_) => {
-                            tracing::error!("\x1b[1;31m----\x1b[0m");
-                        },
+                            //
+                        }
 
                         c => {
                             tracing::warn!("got unknown message: {c:?}");
