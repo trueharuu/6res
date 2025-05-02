@@ -8,6 +8,12 @@ pub struct Environment {
     pub signature: Signature,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Session {
+    pub ribbonid: String,
+    pub tokenid: String,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 
 pub struct Signature {
@@ -66,7 +72,16 @@ pub struct SigClientVersion {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct User {}
+pub struct User {
+    pub _id: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Either<T, U> {
+    Server(T),
+    Client(U),
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", content = "data")]
@@ -74,7 +89,7 @@ pub struct User {}
 pub enum Packet {
     New,
     Packets {
-        packets: Vec<Packet>,
+        packets: Vec<Message>,
     },
     Kick {
         reason: String,
@@ -86,23 +101,14 @@ pub enum Packet {
     #[serde(rename = "social.online")]
     SocialOnline(usize),
     #[serde(rename = "server.authorize")]
-    ServerAuthorize {
-        handling: Option<Handling>,
-        signature: Option<Signature>,
-        token: Option<String>,
-    },
+    ServerAuthorize(Either<ServerAuthorize, ClientAuthorize>),
     Ping {
-        recvid: Option<usize>,
+        recvid: Option<u64>,
     },
     #[serde(rename = "social.presence")]
     SocialPresence(Value),
     #[serde(rename = "social.dm")]
-    SocialDm {
-        data: Dm,
-        id: String,
-        stream: String,
-        ts: String,
-    },
+    SocialDm(Either<ServerSocialDm, ClientSocialDm>),
     #[serde(rename = "social.notification")]
     SocialNotification(Value),
     #[serde(rename = "social.invite")]
@@ -113,11 +119,89 @@ pub enum Packet {
         sender: String,
     },
     #[serde(rename = "room.join")]
-    RoomJoin(String),
+    RoomJoin(Either<ServerRoomJoin, ClientRoomJoin>),
+    #[serde(rename = "room.update")]
+    RoomUpdate {},
     #[serde(rename = "server.migrate")]
-    ServerMigrate { endpoint: String, flag: String, name: String },
-    
+    ServerMigrate {
+        endpoint: String,
+        flag: String,
+        name: String,
+    },
+    #[serde(rename = "social.dm.fail")]
+    SocialDmFail(Value),
+    #[serde(rename = "server.migrated")]
+    ServerMigrated {},
+    #[serde(rename = "notify")]
+    Notify {
+        msg: String,
+        #[serde(rename = "type")]
+        kind: String,
+    },
+    #[serde(rename = "room.chat")]
+    RoomChat {},
+    #[serde(rename = "room.update.bracket")]
+    RoomUpdateBracket {},
+    #[serde(rename = "game.ready")]
+    GameReady {},
+    #[serde(rename = "game.replay.ige")]
+    GameReplayIge {},
+    #[serde(rename = "room.update.auto")]
+    RoomUpdateAuto {},
+    #[serde(rename = "game.match")]
+    GameMatch {},
+    #[serde(rename = "game.start")]
+    GameStart {},
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Message {
+    pub id: Option<u64>,
+    #[serde(flatten)]
+    pub packet: Packet,
+}
+
+impl Debug for Message {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} @ {}", self.packet, self.id.unwrap_or(0))
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerSocialDm {
+    pub data: Dm,
+    pub id: String,
+    pub stream: String,
+    pub ts: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClientSocialDm {
+    pub recipient: String,
+    pub msg: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClientAuthorize {
+    pub handling: Handling,
+    pub signature: Signature,
+    pub token: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerAuthorize {
+    pub maintenance: bool,
+    pub worker: Value,
+    // pub social: Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ServerRoomJoin {
+    pub banner: Option<String>,
+    pub id: String,
+    pub silent: bool,
+}
+
+pub type ClientRoomJoin = String;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -181,10 +265,10 @@ pub enum SocialNotificationType {
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Dm {
-    content: String,
-    content_safe: String,
-    system: bool,
-    user: String,
+    pub content: String,
+    pub content_safe: Option<String>,
+    pub system: Option<bool>,
+    pub user: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
