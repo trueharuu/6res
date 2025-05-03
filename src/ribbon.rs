@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use async_recursion::async_recursion;
 use futures::{SinkExt, stream::SplitSink};
@@ -9,7 +9,8 @@ use tokio_tungstenite::{
 };
 
 use crate::ty::{
-    ClientAuthorize, ClientSocialDm, Either, Handling, Message, Packet, Session, Signature, User,
+    Bracket, ClientAuthorize, ClientSocialDm, Either, Handling, Message, Packet, Room, Session,
+    Signature, User,
 };
 
 pub struct Ribbon {
@@ -21,6 +22,7 @@ pub struct Ribbon {
     pub migrating: bool,
     pub recvid: u64,
     pub pl: Option<tokio::task::JoinHandle<()>>,
+    pub room: Option<Room>,
     // pub attach_ids: bool,
 }
 
@@ -40,6 +42,8 @@ impl Ribbon {
     pub async fn send(_: Arc<Mutex<Self>>, tx: Arc<Mutex<Tx>>, msg: Message) {
         if !matches!(msg.packet, Packet::Ping { .. }) {
             tracing::info!("\x1b[1;32m===>\x1b[0m {msg:?}");
+        } else {
+            tracing::debug!("\x1b[1;32m===>\x1b[0m {msg:?}");
         }
 
         tx.lock()
@@ -81,7 +85,13 @@ impl Ribbon {
                 "\x1b[1;34m{}\x1b[0m {msg:?}",
                 if is_pckts { "<---" } else { "<===" }
             );
+        } else {
+            tracing::debug!(
+                "\x1b[1;34m{}\x1b[0m {msg:?}",
+                if is_pckts { "<---" } else { "<===" }
+            );
         }
+
         match msg.packet {
             Packet::Packets { packets } => {
                 for p in packets {
@@ -162,9 +172,89 @@ impl Ribbon {
             Packet::ServerMigrated {} => {
                 Ribbon::start_ping_loop(this, tx).await;
             }
+
+            Packet::RoomChat { content, user, .. } => {
+                println!("{} vs {}", this.lock().await.user._id, user._id);
+                if this.lock().await.user._id == user._id {
+                    return;
+                }
+                tracing::warn!("got a chat from ok user!");
+
+                if content == "~join" {
+                    let room = this.lock().await.room.clone();
+                    println!("room: {room:?}");
+                    if let Some(r) = room {
+                        if r.width != 4 {
+                            Ribbon::send_packet(
+                                this.clone(),
+                                tx.clone(),
+                                Packet::RoomChatSend {
+                                    content: "board.width must be 4".to_string(),
+                                    pinned: false,
+                                },
+                            )
+                            .await;
+                            return;
+                        }
+
+                        if r.g != 0.0 {
+                            Ribbon::send_packet(
+                                this.clone(),
+                                tx.clone(),
+                                Packet::RoomChatSend {
+                                    content: "gravity must be 0".to_string(),
+                                    pinned: false,
+                                },
+                            )
+                            .await;
+                            return;
+                        }
+
+                        if r.gi != 0.0 {
+                            Ribbon::send_packet(
+                                this.clone(),
+                                tx.clone(),
+                                Packet::RoomChatSend {
+                                    content: "gravity increase must be 0".to_string(),
+                                    pinned: false,
+                                },
+                            )
+                            .await;
+                            return;
+                        }
+
+                        Ribbon::send_packet(
+                            this.clone(),
+                            tx.clone(),
+                            Packet::RoomBracketSwitch(Bracket::Player)
+                        )
+                        .await;
+                    }
+                }
+            }
+
+            Packet::RoomUpdate { options, .. } => {
+                this.lock().await.room = Some(Room {
+                    width: options.boardwidth,
+                    g: options.g,
+                    gi: options.gincrease,
+                });
+            }
             _ => {}
         }
         // do something..
+    }
+
+    pub async fn send_chat_message(this: Arc<Mutex<Self>>, tx: Arc<Mutex<Tx>>, msg: impl Display) {
+        Ribbon::send_packet(
+            this.clone(),
+            tx.clone(),
+            Packet::RoomChatSend {
+                content: msg.to_string(),
+                pinned: false,
+            },
+        )
+        .await;
     }
 
     pub async fn start_ping_loop(z: Arc<Mutex<Self>>, t: Arc<Mutex<Tx>>) {

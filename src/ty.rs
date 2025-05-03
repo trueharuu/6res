@@ -121,7 +121,20 @@ pub enum Packet {
     #[serde(rename = "room.join")]
     RoomJoin(Either<ServerRoomJoin, ClientRoomJoin>),
     #[serde(rename = "room.update")]
-    RoomUpdate {},
+    #[serde(rename_all = "camelCase")]
+    RoomUpdate {
+        allow_bots: bool,
+        allow_chat: bool,
+        creator: String,
+        id: String,
+        #[serde(rename = "match")]
+        zmatch: Match,
+        players: Vec<User>,
+        state: String,
+        #[serde(rename = "type")]
+        ty: String,
+        options: Options,
+    },
     #[serde(rename = "server.migrate")]
     ServerMigrate {
         endpoint: String,
@@ -157,6 +170,13 @@ pub enum Packet {
     GameMatch(Value),
     #[serde(rename = "game.start")]
     GameStart(Value),
+    #[serde(rename = "room.bracket.switch")]
+    RoomBracketSwitch(Bracket),
+    #[serde(rename = "room.chat.send")]
+    RoomChatSend {
+        content: String,
+        pinned: bool,
+    },
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -218,6 +238,13 @@ pub struct ServerRoomJoin {
 }
 
 pub type ClientRoomJoin = String;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Bracket {
+    Player,
+    Spectator,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -323,4 +350,116 @@ pub enum Initial {
     Tap,
     Hold,
     None,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Room {
+    pub width: u64,
+    pub g: f64,
+    pub gi: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Match {
+    pub ft: u64,
+    pub gamemode: String,
+    pub gp: u64,
+    pub modename: String,
+    
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Options {
+    // pub allclear_b2b: u64,
+    // pub allclear_b2b_dupes: bool,
+    // pub allclear_b2b_sends: bool,
+    // pub allclear_charges: bool,
+    // pub allclear_garbage: u64,
+    // pub allclears: bool,
+    pub allow180: bool,
+    pub allow_harddrop: bool,
+    // pub are: u64,
+    // pub b2bchaining: bool,
+    // pub b2bcharge_at: u64,
+    // pub b2bcharge_base: u64,
+    // pub b2bcharging: bool,
+    // pub b2bextras: bool,
+    pub bagtype: String,
+    // pub bgmnoreset: bool,
+    pub boardheight: u64,
+    pub boardwidth: u64,
+    // pub can_retry: bool,
+    // pub can_undo: bool,
+    // pub clutch: bool,
+    // pub combotable: String,
+    // pub countdown: bool,
+    // pub countdown_count: u64,
+    // pub countdown_interval: u64,
+    // pub display_fire: bool,
+    pub display_hold: bool,
+    pub display_next: bool,
+    pub display_shadow: bool,
+    pub display_username: bool,
+    // pub forfeit_time: u64,
+    pub g: f64,
+    pub gincrease: f64,
+    // pub garbageabsolutecap: u64,
+    // pub garbageare: u64,
+    // pub garbagearebump: u64,
+    // pub garbageblocking: String,
+    // pub garbagecap: u64,
+    // pub garbagecapincrease: f64,
+    // pub garbagecapmargin: u64,
+    // pub garbagecapmax: u64,
+    // pub garbageentry: String,
+    // pub garbageholesize: usize,
+    // pub garbageincrease: f64,
+    // pub garbagemargin: u64,
+    // pub garbagemultiplier: f64,
+    // pub garbagephase: f64,
+    // pub garbagequeue: bool,
+    // pub garbagespecialbonus: bool,
+    // pub infinite_movement: bool,
+    pub kickset: String,
+    pub lineclear_are: u64,
+    // pub lockresets: u64,
+    // pub locktime: u64,
+    // pub manual_allowed: bool,
+    // pub messiness_change: f64,
+    // pub messiness_inner: f64,
+    // pub messiness_nosame: bool,
+    // pub messiness_timeout: f64,
+    // pub mission: String,
+    // pub mission_type: String,
+    // pub neverstopbgm: bool,
+    // pub new_payback: bool,
+    // pub nextcount: u64,
+    // pub noextrawidth: bool,
+    // pub nolockout: bool,
+    // pub objective_type: String,
+    // pub openerphase: u64,
+    // pub passthrough: String,
+    // pub precountdown: u64,
+    // pub prestart: u64,
+    // pub retryisclear: bool,
+    // pub room_handling: String,
+    // pub room_handling_arr: u64,
+    // pub room_handling_das: u64,
+    // pub room_handling_sdf: u64,
+    // pub roundmode: String,
+    pub seed: u64,
+    pub seed_random: bool,
+    // pub slot_bar1: String,
+    // pub slot_bar2: String,
+    // pub slot_counter1: String,
+    // pub slot_counter2: String,
+    // pub slot_counter3: String,
+    // pub slot_counter4: String,
+    // pub slot_counter5: String,
+    pub spinbonuses: String,
+    pub stock: u64,
+    // pub stride: bool,
+    // pub usebombs: bool,
+    pub version: u64,
+    // pub zoominto: String,
 }

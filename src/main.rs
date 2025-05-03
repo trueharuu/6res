@@ -1,7 +1,6 @@
 pub mod json;
 pub mod ribbon;
 pub mod ty;
-pub mod engine;
 
 use std::sync::Arc;
 
@@ -77,6 +76,7 @@ async fn main() -> anyhow::Result<()> {
         migrating: false,
         recvid: 0,
         pl: None,
+        room: None,
     }));
     loop {
         let ribbon = tsr.clone();
