@@ -1,6 +1,7 @@
 pub mod json;
 pub mod ribbon;
 pub mod ty;
+pub mod engine;
 
 use std::sync::Arc;
 
@@ -74,6 +75,8 @@ async fn main() -> anyhow::Result<()> {
         token: token.clone(),
         user: serde_json::from_value(u.get("user").unwrap().clone()).unwrap(),
         migrating: false,
+        recvid: 0,
+        pl: None,
     }));
     loop {
         let ribbon = tsr.clone();
@@ -111,6 +114,9 @@ async fn main() -> anyhow::Result<()> {
                             Msg::Text(text) => {
                                 let cpy = ribbon.clone();
                                 let s: Value = serde_json::from_str(&text).unwrap();
+                                if let Some(t) = s.get("id").and_then(|x|x.as_u64()) { 
+                                    ribbon.lock().await.recvid = t;
+                                }
                                 // tracing::debug!("{s:#?}");
                                 match serde_json::from_value::<Message>(s.clone()) {
                                     Ok(msg) => {
@@ -127,6 +133,10 @@ async fn main() -> anyhow::Result<()> {
                                             tracing::info!(name: "res::ribbon", "\x1b[1;33m<==>\x1b[0m {endpoint}");
                                             ribbon.lock().await.endpoint = endpoint.clone();
                                             ribbon.lock().await.migrating = true;
+                                            if let Some(z) = ribbon.lock().await.pl.take() {
+                                                tracing::warn!("killing ping loop");
+                                                z.abort();
+                                            }
                                             return;
                                         }
 

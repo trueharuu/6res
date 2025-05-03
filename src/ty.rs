@@ -136,22 +136,27 @@ pub enum Packet {
     Notify {
         msg: String,
         #[serde(rename = "type")]
-        kind: String,
+        kind: Option<String>,
     },
     #[serde(rename = "room.chat")]
-    RoomChat {},
+    RoomChat {
+        content: String,
+        pinned: bool,
+        system: bool,
+        user: User,
+    },
     #[serde(rename = "room.update.bracket")]
-    RoomUpdateBracket {},
+    RoomUpdateBracket(Value),
     #[serde(rename = "game.ready")]
-    GameReady {},
+    GameReady(Value),
     #[serde(rename = "game.replay.ige")]
-    GameReplayIge {},
+    GameReplayIge(Value),
     #[serde(rename = "room.update.auto")]
-    RoomUpdateAuto {},
+    RoomUpdateAuto(Value),
     #[serde(rename = "game.match")]
-    GameMatch {},
+    GameMatch(Value),
     #[serde(rename = "game.start")]
-    GameStart {},
+    GameStart(Value),
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -163,7 +168,12 @@ pub struct Message {
 
 impl Debug for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} @ {}", self.packet, self.id.unwrap_or(0))
+        let id = self.id.unwrap_or(0);
+        if f.alternate() {
+            write!(f, "{:#?} @ {id}", self.packet)
+        } else {
+            write!(f, "{:?} @ {id}", self.packet)
+        }
     }
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -180,11 +190,17 @@ pub struct ClientSocialDm {
     pub msg: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ClientAuthorize {
     pub handling: Handling,
     pub signature: Signature,
     pub token: String,
+}
+
+impl Debug for ClientAuthorize {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "<...>")
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

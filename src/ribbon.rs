@@ -19,7 +19,8 @@ pub struct Ribbon {
     pub token: String,
     pub user: User,
     pub migrating: bool,
-    // pub recvid: u64,
+    pub recvid: u64,
+    pub pl: Option<tokio::task::JoinHandle<()>>,
     // pub attach_ids: bool,
 }
 
@@ -37,9 +38,9 @@ impl Ribbon {
     }
 
     pub async fn send(_: Arc<Mutex<Self>>, tx: Arc<Mutex<Tx>>, msg: Message) {
-        // if !matches!(msg.packet, Packet::Ping { .. }) {
-        tracing::info!("\x1b[1;32m===>\x1b[0m {msg:?}");
-        // }
+        if !matches!(msg.packet, Packet::Ping { .. }) {
+            tracing::info!("\x1b[1;32m===>\x1b[0m {msg:?}");
+        }
 
         tx.lock()
             .await
@@ -57,18 +58,37 @@ impl Ribbon {
         Ribbon::send(t, tx, msg).await;
     }
 
+    pub async fn should_ignore(this: Arc<Mutex<Self>>, msg: Message) -> bool {
+        if matches!(
+            msg.packet,
+            Packet::Ping { .. } | Packet::Session { .. } | Packet::Packets { .. }
+        ) {
+            return false;
+        }
+
+        if msg.id.is_some() && msg.id.unwrap() < this.lock().await.recvid {
+            return true;
+        }
+
+        return false;
+    }
+
     // this can call `::send`.
     #[async_recursion]
     pub async fn recv(this: Arc<Mutex<Self>>, tx: Arc<Mutex<Tx>>, msg: Message, is_pckts: bool) {
-        // if !matches!(msg.packet, Packet::Ping { .. } | Packet::Packets { .. }) {
-        tracing::info!(
-            "\x1b[1;34m{}\x1b[0m {msg:?}",
-            if is_pckts { "<---" } else { "<===" }
-        );
-        // }
+        if !matches!(msg.packet, Packet::Ping { .. } | Packet::Packets { .. }) {
+            tracing::info!(
+                "\x1b[1;34m{}\x1b[0m {msg:?}",
+                if is_pckts { "<---" } else { "<===" }
+            );
+        }
         match msg.packet {
             Packet::Packets { packets } => {
                 for p in packets {
+                    // println!("packet had id {:?} vs. {}", p.id, this.lock().await.recvid);
+                    if Ribbon::should_ignore(this.clone(), p.clone()).await {
+                        return;
+                    }
                     let z = this.clone();
                     let t = tx.clone();
 
@@ -100,15 +120,7 @@ impl Ribbon {
             Packet::ServerAuthorize { .. } => {
                 let z = this.clone();
                 let t = tx.clone();
-                tokio::task::spawn(async move {
-                    let mut i = tokio::time::interval(tokio::time::Duration::from_secs(5));
-
-                    loop {
-                        i.tick().await;
-                        Ribbon::send_packet(z.clone(), t.clone(), Packet::Ping { recvid: None })
-                            .await;
-                    }
-                });
+                Ribbon::start_ping_loop(z, t).await;
                 Ribbon::send_packet(
                     this.clone(),
                     tx.clone(),
@@ -123,7 +135,7 @@ impl Ribbon {
                         if z.id == this.lock().await.user._id {
                             return;
                         }
-                        println!("got a dm from ok user!");
+                        tracing::warn!("got a dm from ok user!");
                         Ribbon::send_packet(
                             this.clone(),
                             tx.clone(),
@@ -146,8 +158,33 @@ impl Ribbon {
                 )
                 .await;
             }
+
+            Packet::ServerMigrated {} => {
+                Ribbon::start_ping_loop(this, tx).await;
+            }
             _ => {}
         }
         // do something..
+    }
+
+    pub async fn start_ping_loop(z: Arc<Mutex<Self>>, t: Arc<Mutex<Tx>>) {
+        tracing::warn!("starting ping loop");
+
+        let tt = z.clone();
+        z.clone().lock().await.pl = Some(tokio::task::spawn(async move {
+            let mut i = tokio::time::interval(tokio::time::Duration::from_secs(5));
+
+            loop {
+                i.tick().await;
+                Ribbon::send_packet(
+                    tt.clone(),
+                    t.clone(),
+                    Packet::Ping {
+                        recvid: Some(tt.lock().await.recvid),
+                    },
+                )
+                .await;
+            }
+        }));
     }
 }
