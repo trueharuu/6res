@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "@haelp/teto": "^3.1.6",
+    "@types/node": "^24.0.7",
+    "dotenv": "^17.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.6.2",
+    "prettier-eslint": "^16.4.2"
+  }
+}
