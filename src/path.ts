@@ -1,0 +1,1 @@
+export function path(queue: string, vision: number, foresight: number) {}

@@ -1,13 +1,13 @@
 import { Client } from "@haelp/teto";
 import "dotenv/config.js";
 import { check_settings } from "./check";
-import { Bot } from "./bot";
+import { Bot, FinesseStyle } from "./bot";
 import { Room } from "@haelp/teto/dist/types/classes";
 
 (async () => {
   const client = await Client.connect({
     token: process.env.token!,
-    ribbon: { codec: "candor", verbose: true },
+    ribbon: { codec: "candor", verbose: false },
     handling: {
       arr: 0,
       cancel: false,
@@ -31,7 +31,7 @@ import { Room } from "@haelp/teto/dist/types/classes";
   client.on("social.invite", async (c) => {
     room = await client.rooms.join(c.roomid);
     bot = new Bot(room);
-    await room.chat("hi!");
+    // await room.chat("hi!");
   });
 
   client.on("room.update.bracket", async (c) => {
@@ -58,7 +58,8 @@ import { Room } from "@haelp/teto/dist/types/classes";
       return;
     }
 
-    const command = c.content.slice(1).split(/s+/g); // rust `split_ascii_whitespace` when
+    const command = c.content.slice(1).split(/\s+/g); // rust `split_ascii_whitespace` when
+    console.log(command);
 
     if (command[0] === "check") {
       const results = check_settings(client.room!);
@@ -71,22 +72,61 @@ import { Room } from "@haelp/teto/dist/types/classes";
       await room.chat("something is bad! paste the following to apply fixes:");
       await room.chat("/set " + results.join(";"));
     }
+
+    if (command[0] === "style") {
+      const ty = command[1].toLowerCase();
+      if (ty === "instant") {
+        bot.finesse = FinesseStyle.Instant;
+      } else if (ty === "srs180") {
+        bot.finesse = FinesseStyle.SRS180;
+      } else if (ty === "srsx") {
+        bot.finesse = FinesseStyle.SRSX;
+      } else if (ty === "srs") {
+        bot.finesse = FinesseStyle.SRS;
+      } else {
+        return await room.chat(
+          "invalid finesse style, valid styles are: instant | srs180 | srsx | srs",
+        );
+      }
+    }
+
+    if (command[0] === "pps") {
+      const n = Number(command[1]);
+      if (Number.isNaN(n)) {
+        return await room.chat("not a number");
+      }
+
+      bot.pps = n;
+    }
+
+    if (command[0] === "settings") {
+      return await room.chat(
+        `pps=${bot.pps}; finesse=${bot.finesse}; vision=${bot.vision}; foresight=${bot.foresight}`,
+      );
+    }
   });
 
   client.on("client.game.start", async (c) => {
-    await room.chat("golf");
+    if (c.players.some((x) => x.id === client.user.id)) {
+      await room.chat("glhf");
+    }
   });
 
   client.on("client.game.end", async (c) => {
-    await room.chat("ggwp");
+    if (c.players.some((x) => x.id === client.user.id)) {
+      await room.chat("ggwp");
+    }
   });
 
   client.on("client.game.round.start", ([tick, engine, settings]) => {
     tick(async (c) => {
-      return bot.tick(c.frame, {
+      return bot.tick({
         board: c.engine.board,
         hold: c.engine.held,
         queue: c.engine.queue.value,
+        current: c.engine.falling.symbol,
+        frame: c.frame,
+        engine,
       });
     });
   });
