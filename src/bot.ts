@@ -4,12 +4,13 @@ import type { Game } from "@haelp/teto/dist/types/types";
 import type { Placement } from "./input";
 import { permutations } from "./util";
 import { Engine } from "@haelp/teto";
+import { path } from "./path";
 
 export enum FinesseStyle {
-  SRS = 'srs',
-  SRS180 = 'srs180',
-  SRSX = 'srsx',
-  Instant = 'instant',
+  SRS = "srs",
+  SRS180 = "srs180",
+  SRSX = "srsx",
+  Instant = "instant",
 }
 
 export interface State {
@@ -38,18 +39,26 @@ export class Bot {
   public constructor(public readonly room: Room) {}
 
   public best_placement(state: State): Placement {
-    const s = state.engine.snapshot();
-    state.engine.press("rotateCW");
-    state.engine.press("moveLeft");
-    state.engine.press("softDrop");
-    const x = state.engine.falling.x;
-    const y = state.engine.falling.y;
-    const r = state.engine.falling.rotation;
-    state.engine.fromSnapshot(s);
-
-    return { mino: state.current, rotation: r, x, y, should_hold: false };
-
-    throw "unreachable!";
+    const p = path(
+      state.board.state,
+      state.queue,
+      this.vision,
+      this.foresight,
+    );
+    if (p.length > 0) {
+      return p[0];
+    }
+    
+    fallback: {
+      const s = state.engine.snapshot();
+      state.engine.press("softDrop");
+      const p = state.engine.falling.symbol;
+      const x = state.engine.falling.x;
+      const y = state.engine.falling.y;
+      const r = state.engine.falling.rotation;
+      state.engine.fromSnapshot(s);
+      return { mino: p, rotation: r, x, y };
+    }
   }
 
   public usable_inputs(): Set<Game.Key> {
@@ -71,29 +80,34 @@ export class Bot {
     return 6;
   }
 
-  public get_finesse(placement: Placement, state: State): Array<Game.Key> {
+  public get_finesse(
+    placement: Placement,
+    state: State,
+    should_hold: boolean,
+  ): Array<Game.Key> {
     const t: Array<Game.Key> = [];
-    if (placement.should_hold) {
-      t.push("hold");
-    }
+
     const ui = this.usable_inputs();
     a: for (let n = 1; n <= this.max_kpp(); n++) {
       for (const seq of permutations(ui, n)) {
+        if (should_hold) {
+          seq.unshift("hold");
+        }
         const prev = state.engine.snapshot();
         for (const key of seq) {
           state.engine.press(key);
         }
-        console.log(
-          "seq",
-          seq,
-          "->",
-          "x",
-          state.engine.falling.x,
-          "y",
-          state.engine.falling.y,
-          "r",
-          state.engine.falling.rotation,
-        );
+        // console.log(
+        //   "seq",
+        //   seq,
+        //   "->",
+        //   "x",
+        //   state.engine.falling.x,
+        //   "y",
+        //   state.engine.falling.y,
+        //   "r",
+        //   state.engine.falling.rotation,
+        // );
 
         const falling = state.engine.falling;
         if (
@@ -109,8 +123,8 @@ export class Bot {
         state.engine.fromSnapshot(prev);
       }
     }
-
     t.push("hardDrop");
+
     return t;
   }
 
@@ -121,18 +135,8 @@ export class Bot {
   public tick(state: State): Game.Tick.Out {
     if (this.should_place(state)) {
       const placement = this.best_placement(state);
-      console.log(
-        "placement",
-        "x",
-        placement.x,
-        "y",
-        placement.y,
-        "r",
-        placement.rotation,
-        "p",
-        placement.mino,
-      );
-      const inputs = this.get_finesse(placement, state);
+      const should_hold = placement.mino !== state.current;
+      const inputs = this.get_finesse(placement, state, should_hold);
       console.log("inputs", inputs);
       return { keys: this.frame_inputs(state, inputs) };
     }
@@ -160,8 +164,8 @@ export class Bot {
         type: "keydown",
       });
       frames.push({
-        data: { key: input, subframe: fract + 0.1 },
-        frame: whole + state.frame,
+        data: { key: input, subframe: fract },
+        frame: whole + state.frame + 1,
         type: "keyup",
       });
       current += input_step;

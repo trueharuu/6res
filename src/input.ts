@@ -1,12 +1,11 @@
 import { Mino, Rotation } from "@haelp/teto/dist/types/engine";
 
-export interface Placement {
+export type Placement = {
   x: number;
   y: number;
   rotation: Rotation;
   mino: Mino;
-  should_hold: boolean;
-}
+};
 
 export interface Coordinate {
   x: number;

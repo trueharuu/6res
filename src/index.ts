@@ -21,17 +21,22 @@ import { Room } from "@haelp/teto/dist/types/classes";
     },
   });
 
+  
   client.on("client.friended", async (c) => {
-    console.log(c);
+    // console.log(c);
     await client.social.friend(c.id);
   });
-
+  
   let room!: Room;
   let bot!: Bot;
   client.on("social.invite", async (c) => {
     room = await client.rooms.join(c.roomid);
     bot = new Bot(room);
     // await room.chat("hi!");
+  });
+
+  process.on("SIGINT", async (c) => {
+    await room?.leave();
   });
 
   client.on("room.update.bracket", async (c) => {
@@ -96,7 +101,38 @@ import { Room } from "@haelp/teto/dist/types/classes";
         return await room.chat("not a number");
       }
 
+      if (n > 10) {
+        return await room.chat("no! (pps must be <= 10)");
+      }
+
       bot.pps = n;
+    }
+
+    if (command[0] === 'vision') {
+      const n = Number(command[1]);
+      if (Number.isNaN(n)) {
+        return await room.chat('not a number');
+      }
+
+      if (n > 14 || n < 0) {
+        return await room.chat('no! (vision must be <= 14)');
+      }
+
+      bot.vision = n;
+    }
+    
+
+    if (command[0] === 'foresight') {
+      const n = Number(command[1]);
+      if (Number.isNaN(n)) {
+        return await room.chat('not a number');
+      }
+
+      if (n > 7 || n < 0) {
+        return await room.chat('no! (foresight must be <= 7)');
+      }
+
+      bot.foresight = n;
     }
 
     if (command[0] === "settings") {

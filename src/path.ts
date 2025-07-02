@@ -1,1 +1,30 @@
-export function path(queue: string, vision: number, foresight: number) {}
+import { BoardSquare, Mino } from "@haelp/teto/dist/types/engine";
+import { Placement } from "./input";
+import { permutations } from "./util";
+
+// gl!
+// TODO: if there is a board with LESS THAN 6 minos, build up to a 6residual (haha get it the bot is named 6res) spot
+// ideally, this "opener phase" does NOT clear lines
+//
+// if there is MORE THAN (or equal to) 6 minos, read from top-down
+// to get a relevant board state and then search all combo continuations until one works
+//
+// for combo pathfinding:
+// query all combo continuations and keep track of *all* of the ones that work with `queue`
+// ONLY consider up to `vision` pieces of the queue.
+// then, out of all the paths, select the longest one.
+// if there is a tie, which is common, take the final board state of each candidate
+// and then run this function with every permutation of IJOLZST up to length `foresight` on that board
+// the candidate that supports the MOST foreseen permutations is chosen
+// if a tie is made from this, just take the first one.
+export function path(
+  board: Array<Array<BoardSquare>>,
+  queue: Array<Mino>,
+  vision: number,
+  foresight: number,
+): Array<Placement> {
+  const minocount = board.flat().filter((x) => x !== null).length;
+  const relevance = queue.slice(0, vision);
+  const guesses = permutations('IJOLZST', foresight);
+  return [];
+}
