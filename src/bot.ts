@@ -1,10 +1,7 @@
-import type { Room } from "@haelp/teto/dist/types/classes";
-import type { Board } from "@haelp/teto/dist/types/engine";
-import type { Game } from "@haelp/teto/dist/types/types";
 import type { Placement } from "./input";
 import { permutations } from "./util";
-import { Engine } from "@haelp/teto";
 import { path } from "./path";
+import { Board, BoardState, Engine, Key, Mino, Room, Tick } from "./ty";
 
 export enum FinesseStyle {
   SRS = "srs",
@@ -15,10 +12,10 @@ export enum FinesseStyle {
 
 export interface State {
   board: Board;
-  hold: Engine.Mino | null;
-  current: Engine.Mino;
-  queue: Array<Engine.Mino>;
-  engine: Engine.Engine;
+  hold: Mino | null;
+  current: Mino;
+  queue: Array<Mino>;
+  engine: Engine;
   frame: number;
 }
 
@@ -39,16 +36,11 @@ export class Bot {
   public constructor(public readonly room: Room) {}
 
   public best_placement(state: State): Placement {
-    const p = path(
-      state.board.state,
-      state.queue,
-      this.vision,
-      this.foresight,
-    );
+    const p = path(this, state);
     if (p.length > 0) {
       return p[0];
     }
-    
+
     fallback: {
       const s = state.engine.snapshot();
       state.engine.press("softDrop");
@@ -61,8 +53,8 @@ export class Bot {
     }
   }
 
-  public usable_inputs(): Set<Game.Key> {
-    const t: Set<Game.Key> = new Set();
+  public usable_inputs(): Set<Key> {
+    const t: Set<Key> = new Set();
     t.add("moveLeft");
     t.add("moveRight");
     t.add("rotateCCW");
@@ -84,8 +76,9 @@ export class Bot {
     placement: Placement,
     state: State,
     should_hold: boolean,
-  ): Array<Game.Key> {
-    const t: Array<Game.Key> = [];
+    board: BoardState = state.board.state,
+  ): Array<Key> | null {
+    const t: Array<Key> = [];
 
     const ui = this.usable_inputs();
     a: for (let n = 1; n <= this.max_kpp(); n++) {
@@ -94,6 +87,8 @@ export class Bot {
           seq.unshift("hold");
         }
         const prev = state.engine.snapshot();
+        
+        state.engine.board.state = board;
         for (const key of seq) {
           state.engine.press(key);
         }
@@ -132,13 +127,16 @@ export class Bot {
     return state.frame % (this.fps / this.pps) === 0;
   }
 
-  public tick(state: State): Game.Tick.Out {
+  public tick(state: State): Tick.Out {
     if (this.should_place(state)) {
       const placement = this.best_placement(state);
       const should_hold = placement.mino !== state.current;
       const inputs = this.get_finesse(placement, state, should_hold);
-      console.log("inputs", inputs);
-      return { keys: this.frame_inputs(state, inputs) };
+      if (inputs) {
+        return { keys: this.frame_inputs(state, inputs) };
+      } else {
+
+      }
     }
 
     return {};
@@ -146,15 +144,15 @@ export class Bot {
 
   public frame_inputs(
     state: State,
-    inputs: Array<Game.Key>,
-  ): Game.Tick.Keypress[] {
+    inputs: Array<Key>,
+  ): Tick.Keypress[] {
     // if playing at N pps it should take `fps/n` frames per piece
     const total_frames = this.fps / this.pps;
 
     // if finesse takes T steps then each step should take `total_frames/T` frame per input
     const input_step = total_frames / inputs.length;
     let current = 0;
-    const frames: Game.Tick.Keypress[] = [];
+    const frames: Tick.Keypress[] = [];
     for (const input of inputs) {
       const whole = Math.trunc(current);
       const fract = current - whole;

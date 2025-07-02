@@ -1,5 +1,3 @@
-import { Mino } from "@haelp/teto/dist/types/engine";
-
 export function* permutations<T>(t: Iterable<T>, n: number): Generator<T[]> {
   const items = Array.from(t);
   const current: T[] = [];

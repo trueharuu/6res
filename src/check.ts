@@ -1,8 +1,8 @@
-import { Room } from "@haelp/teto/dist/types/classes";
+import { RoomOptions } from "./ty";
 
-export function check_settings(room: Room) {
+export function check_settings(room: RoomOptions) {
     const fixes = [];
-    if (room.options.boardwidth !== 4) {
+    if (room.boardwidth !== 4) {
         fixes.push('options.boardwidth=4');
     }
 

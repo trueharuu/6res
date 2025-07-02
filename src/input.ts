@@ -1,4 +1,4 @@
-import { Mino, Rotation } from "@haelp/teto/dist/types/engine";
+import { Mino, Rotation } from "./ty";
 
 export type Placement = {
   x: number;

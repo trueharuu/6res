@@ -2,7 +2,9 @@ import { Client } from "@haelp/teto";
 import "dotenv/config.js";
 import { check_settings } from "./check";
 import { Bot, FinesseStyle } from "./bot";
-import { Room } from "@haelp/teto/dist/types/classes";
+
+import { at } from "./path";
+import { Room } from "./ty";
 
 (async () => {
   const client = await Client.connect({
@@ -21,12 +23,11 @@ import { Room } from "@haelp/teto/dist/types/classes";
     },
   });
 
-  
   client.on("client.friended", async (c) => {
     // console.log(c);
     await client.social.friend(c.id);
   });
-  
+
   let room!: Room;
   let bot!: Bot;
   client.on("social.invite", async (c) => {
@@ -35,19 +36,33 @@ import { Room } from "@haelp/teto/dist/types/classes";
     // await room.chat("hi!");
   });
 
+  client.on("client.room.join", (c) => {
+    if (check_settings(c.options)) {
+      c.switch("player");
+    }
+  });
+
+  client.on("room.update", (c) => {
+    console.log('room updated!');
+    if (!check_settings(c.options)) {
+      room.switch("spectator");
+    }
+  });
+
   process.on("SIGINT", async (c) => {
     await room?.leave();
+    process.exit();
   });
 
   client.on("room.update.bracket", async (c) => {
     if (c.uid === client.user.id && c.bracket === "player") {
-      const results = check_settings(client.room!);
+      const results = check_settings(room.options);
       if (results.length > 0) {
         await client.room!.chat(
           "something is bad! paste the following to apply fixes:",
         );
-        await client.room!.chat("/set " + results.join(";"));
-        await client.room!.switch("spectator");
+        await room.chat("/set " + results.join(";"));
+        await room.switch("spectator");
       }
     }
   });
@@ -66,8 +81,15 @@ import { Room } from "@haelp/teto/dist/types/classes";
     const command = c.content.slice(1).split(/\s+/g); // rust `split_ascii_whitespace` when
     console.log(command);
 
+    if (
+      c.user._id !== room.owner ||
+      !process.env.HOSTS?.split(",").includes(c.user._id)
+    ) {
+      return;
+    }
+
     if (command[0] === "check") {
-      const results = check_settings(client.room!);
+      const results = check_settings(room.options);
 
       if (results.length === 0) {
         await client.room!.chat("all ok!");
@@ -108,28 +130,27 @@ import { Room } from "@haelp/teto/dist/types/classes";
       bot.pps = n;
     }
 
-    if (command[0] === 'vision') {
+    if (command[0] === "vision") {
       const n = Number(command[1]);
       if (Number.isNaN(n)) {
-        return await room.chat('not a number');
+        return await room.chat("not a number");
       }
 
       if (n > 14 || n < 0) {
-        return await room.chat('no! (vision must be <= 14)');
+        return await room.chat("no! (vision must be <= 14)");
       }
 
       bot.vision = n;
     }
-    
 
-    if (command[0] === 'foresight') {
+    if (command[0] === "foresight") {
       const n = Number(command[1]);
       if (Number.isNaN(n)) {
-        return await room.chat('not a number');
+        return await room.chat("not a number");
       }
 
       if (n > 7 || n < 0) {
-        return await room.chat('no! (foresight must be <= 7)');
+        return await room.chat("no! (foresight must be <= 7)");
       }
 
       bot.foresight = n;
