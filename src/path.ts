@@ -5,6 +5,7 @@ import { permutations } from "./util";
 // gl!
 // TODO: if there is a board with LESS THAN 6 minos, build up to a 6residual (haha get it the bot is named 6res) spot
 // ideally, this "opener phase" does NOT clear lines
+// "opener phase" also should ONLY apply when we are currently not in combo
 //
 // if there is MORE THAN (or equal to) 6 minos, read from top-down
 // to get a relevant board state and then search all combo continuations until one works
