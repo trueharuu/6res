@@ -37,6 +37,7 @@ import { Room } from "@haelp/teto/dist/types/classes";
 
   process.on("SIGINT", async (c) => {
     await room?.leave();
+    process.exit();
   });
 
   client.on("room.update.bracket", async (c) => {
