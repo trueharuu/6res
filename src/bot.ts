@@ -1,6 +1,6 @@
 import type { Placement } from "./input";
 import { permutations } from "./util";
-import { path } from "./path";
+import { path } from "./path-sfinder";
 import { Board, BoardState, Engine, Key, Mino, Room, Tick } from "./ty";
 
 export enum FinesseStyle {
@@ -30,7 +30,7 @@ export class Bot {
   public vision: number = 7;
   // number of pieces to guess about after `vision`
   public foresight: number = 2;
-  public pps: number = 2;
+  public pps: number = 10;
   public fps: number = 60; // ?
 
   public constructor(public readonly room: Room) {}
@@ -76,7 +76,7 @@ export class Bot {
     placement: Placement,
     state: State,
     should_hold: boolean,
-    board: BoardState = state.board.state,
+    board: BoardState = state.board.state
   ): Array<Key> | null {
     const t: Array<Key> = [];
 
@@ -87,7 +87,7 @@ export class Bot {
           seq.unshift("hold");
         }
         const prev = state.engine.snapshot();
-        
+
         state.engine.board.state = board;
         for (const key of seq) {
           state.engine.press(key);
@@ -135,17 +135,13 @@ export class Bot {
       if (inputs) {
         return { keys: this.frame_inputs(state, inputs) };
       } else {
-
       }
     }
 
     return {};
   }
 
-  public frame_inputs(
-    state: State,
-    inputs: Array<Key>,
-  ): Tick.Keypress[] {
+  public frame_inputs(state: State, inputs: Array<Key>): Tick.Keypress[] {
     // if playing at N pps it should take `fps/n` frames per piece
     const total_frames = this.fps / this.pps;
 

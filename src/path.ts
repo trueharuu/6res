@@ -18,7 +18,7 @@ import { BoardState, Cell, Key, Mino } from "./ty";
 // and then run this function with every permutation of IJOLZST up to length `foresight` on that board
 // the candidate that supports the MOST foreseen permutations is chosen
 // if a tie is made from this, just take the first one.
-export function path(bot: Bot, state: State): Array<Placement> {
+export function path(bot: Bot, state: State): Array<Array<Key>> {
   const board = state.board.state;
   const queue: Array<Mino> = [];
   if (state.hold !== null) {
@@ -31,25 +31,29 @@ export function path(bot: Bot, state: State): Array<Placement> {
   const relevance = queue.slice(0, bot.vision);
   const guesses = permutations("IJOLZST", bot.foresight);
 
+  const b = board.map(x=> x.map(y=>y === null ? 0 : 1));
+  const path = move(b, relevance, state.hold ?? undefined)
+  path
+
   return [];
 }
 
 type B = Array<Array<number>>;
 import * as usm from "./usm";
-export function move(a: B, queue: Array<Mino>, hold?: Mino): Array<unknown> {
-  // @usm do that
+export function move(a: B, queue: Array<Mino>, hold?: Mino): Array<[B, Array<Key>]> {
+  return [move_single(a, queue[0])[0]]
   return [];
 }
 
 export function move_single(
   a: B,
   piece: Mino
-): Array<readonly [Array<Array<number>>, Array<Key>]> {
+): Array<[B, Array<Key>]> {
   const hash = usm.hashBoard(a);
   const minocount = a.flat().filter((x) => x !== null).length;
   const paths = usm
-    .getNextBoards(hash, piece)
-    .map(([b, k]) => [usm.unhashBoard(b), k] as const);
+    .getNextBoards(hash, piece.toUpperCase())
+    .map(([b, k]) => [usm.unhashBoard(b), k] as [B, Array<Key>]);
   return paths;
 }
 
