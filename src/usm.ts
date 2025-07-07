@@ -242,11 +242,12 @@ export function getNextBoards(
   while (queue.length > 0) {
     const current = queue.shift()!;
     const currentKey = current.join(",");
-    console.log(currentKey);
+    const ckwf = current.slice(0, 3).join(",");
 
-    if (!visited.has(currentKey)) {
+    if (!visited.has(ckwf)) {
       const [y, x, rotation, finesse] = current;
-      visited.set(currentKey, finesse);
+
+      visited.set(ckwf, finesse);
 
       // test movement
       for (const xMove of [-1, 1]) {
@@ -330,13 +331,17 @@ export function getNextBoards(
               }
             }
             const nf: Array<Key> = [...finesse];
-            nf.push(
-              (["rotateCW", "rotate180", "rotateCCW"] as const)[rotationMove]
-            );
+            const rotatekey = (
+              ["softDrop", "rotateCW", "rotate180", "rotateCCW"] as const
+            )[rotationMove];
+            // console.log(rotationMove, rotatekey);
+            // if (rotationMove !== 0) {
+              nf.push(rotatekey);
+            // }
 
-            if (newYPosition < kickOffsetY + y) {
+            // if (newYPosition < kickOffsetY + y) {
               nf.push("softDrop");
-            }
+            // }
 
             queue.push([newYPosition, newXPosition, newRotation, nf]);
             break;

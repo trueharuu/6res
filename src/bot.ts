@@ -1,7 +1,14 @@
-import type { Placement } from "./input";
+import {
+  kicktable,
+  PieceDef,
+  piecetable,
+  type Kick,
+  type Placement,
+} from "./input";
 import { permutations } from "./util";
-import { path } from "./path-sfinder";
+import { path } from "./path";
 import { Board, BoardState, Engine, Key, Mino, Room, Tick } from "./ty";
+import { readFileSync } from "fs";
 
 export enum FinesseStyle {
   SRS = "srs",
@@ -30,7 +37,7 @@ export class Bot {
   public vision: number = 7;
   // number of pieces to guess about after `vision`
   public foresight: number = 2;
-  public pps: number = 10;
+  public pps: number = 5;
   public fps: number = 60; // ?
 
   public constructor(public readonly room: Room) {}
@@ -38,7 +45,22 @@ export class Bot {
   public best_placement(state: State): Placement {
     const p = path(this, state);
     if (p.length > 0) {
-      return p[0];
+      console.log(p);
+      const s = state.engine.snapshot();
+      state.engine.press("softDrop");
+      for (const key of p[0][1]) {
+        if (p[0][0] !== state.engine.falling.symbol) {
+          state.engine.press("hold");
+        }
+
+        state.engine.press(key);
+      }
+      const z = state.engine.falling.symbol;
+      const x = state.engine.falling.x;
+      const y = state.engine.falling.y;
+      const r = state.engine.falling.rotation;
+      state.engine.fromSnapshot(s);
+      return { mino: z, rotation: r, x, y };
     }
 
     fallback: {
@@ -66,6 +88,14 @@ export class Bot {
     }
 
     return t;
+  }
+
+  public kicktable(): Array<Kick> {
+    return kicktable(readFileSync("./data/srsx.kick", "utf8"));
+  }
+
+  public piecetable(): Array<PieceDef> {
+    return piecetable(readFileSync("./data/tetromino.piece", "utf-8"));
   }
 
   public max_kpp(): number {
