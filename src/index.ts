@@ -143,11 +143,14 @@ let bot!: Bot;
   client.on("client.game.round.start", ([tick, engine, settings]) => {
     tick(async (c) => {
       const frame = c.frame;
+      console.log(frame);
       let keys: KeyPress[] = [];
-      if (c.frame % (bot.fps / bot.pps) === 0) {
-        let ks = bot.key_queue(c.engine);
+      if (frame % (bot.fps / bot.pps) === 0) {
+        console.log('\x1b[31mcalling engine\x1b[0m')
+        let ks = bot.key_queue(engine);
         ks.push("hardDrop");
         ks = ks.flatMap((x) => ["softDrop", x]);
+        console.log(`\x1b[32m${ks}\x1b[0m`);
         let r_subframe = 0;
         for (const key of ks) {
           keys.push({
