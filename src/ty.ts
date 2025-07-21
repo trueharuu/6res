@@ -8,5 +8,6 @@ export type Engine = Engine.Engine;
 export type Board = Engine.Board;
 export type BoardState = Array<Array<Cell>>;
 export type Key = Types.Game.Key;
+export type KeyPress = Types.Game.Tick.Keypress;
 export import Tick = Types.Game.Tick;
 export type SpinBonuses = Types.Game.SpinBonuses;
