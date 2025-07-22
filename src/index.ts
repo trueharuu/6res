@@ -4,11 +4,26 @@ import { check_settings } from "./check";
 
 import { Key, KeyPress, Room } from "./ty";
 import { Bot } from "./bot";
+import { tracing } from "./tracing";
 // import { displayBoard, getNextBoards, hashBoard, unhashBoard } from "./usm";
 
+// import * as solver_lib from "./usm/solver_lib";
 let room!: Room;
 let bot!: Bot;
+
+process.on("SIGINT", async (c) => {
+  if (room) {
+    await room.chat(":sad:");
+    await room.leave();
+  }
+
+  tracing.fatal("recieved keyboard interrupt");
+});
+
 (async () => {
+  // tracing.info("test");
+
+  tracing.perf("init");
   const client = await Client.connect({
     token: process.env.token!,
     ribbon: { codec: "candor", verbose: false },
@@ -25,14 +40,34 @@ let bot!: Bot;
     },
   });
 
-  console.log(client.social.friends.map((x) => x.username));
+  client.on("kick", (c) => {
+    tracing.warn(`kicked for ${tracing.tag(c.reason)}`);
+  });
+
+  tracing.perf("init");
+
+  client.on("error", (c) => {
+    tracing.error(c);
+  });
 
   client.on("client.friended", async (c) => {
     await client.social.friend(c.id);
   });
 
   client.on("social.invite", async (c) => {
+    tracing.info(`got invited to ${c.roomid}`);
+    if (room) {
+      if (!process.env.HOSTS?.split(",").includes(c.sender)) {
+        await client.social.dm(c.sender, "already in a room :(");
+        return;
+      }
+
+      await room.leave();
+    }
     room = await client.rooms.join(c.roomid);
+    if (check_settings(room.options).length === 0) {
+      await room.switch("player");
+    }
     bot = new Bot(room);
   });
 
@@ -92,7 +127,6 @@ let bot!: Bot;
       }
 
       bot.pps = n;
-      // console.log(bot.pps);
     }
 
     if (command[0] === "vision") {
@@ -143,14 +177,16 @@ let bot!: Bot;
   client.on("client.game.round.start", ([tick, engine, settings]) => {
     tick(async (c) => {
       const frame = c.frame;
-      console.log(frame);
       let keys: KeyPress[] = [];
       if (frame % (bot.fps / bot.pps) === 0) {
-        console.log('\x1b[31mcalling engine\x1b[0m')
-        let ks = bot.key_queue(engine);
+        const t = Date.now();
+        tracing.perf("syscall");
+        let ks = await bot.key_queue(engine);
         ks.push("hardDrop");
         ks = ks.flatMap((x) => ["softDrop", x]);
-        console.log(`\x1b[32m${ks}\x1b[0m`);
+        tracing.perf("syscall");
+
+        // console.log(`\x1b[32m${ks}\x1b[0m`);
         let r_subframe = 0;
         for (const key of ks) {
           keys.push({

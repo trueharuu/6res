@@ -1,0 +1,88 @@
+import { inspect } from "node:util";
+
+export class Tracing {
+  private pf: Record<string, number> = {};
+  public constructor(public level: Level) {}
+  private should(level: Level) {
+    return level >= this.level;
+  }
+
+  private print(level: Level, contents: Array<any>): void {
+    if (!this.should(level)) {
+      return;
+    }
+
+    console.log(
+      `\x1b[30m${new Date().toISOString()}\x1b[0m ${this.label(level)} ${contents.map((x) => this.str(x)).join(" ")}`
+    );
+  }
+
+  private str(t: any): string {
+    if (typeof t === "string") {
+      return t;
+    }
+    return inspect(t);
+  }
+
+  private label(level: Level): string {
+    switch (level) {
+      case Level.Debug:
+        return "\x1b[34mDEBUG\x1b[0m";
+      case Level.Perf:
+        return "\x1b[35m PERF\x1b[0m";
+      case Level.Info:
+        return "\x1b[32m INFO\x1b[0m";
+      case Level.Warn:
+        return "\x1b[33m WARN\x1b[0m";
+      case Level.Error:
+        return "\x1b[31mERROR\x1b[0m";
+      case Level.Fatal:
+        return "\x1b[31mFATAL\x1b[0m";
+    }
+  }
+
+  public debug(...contents: Array<any>): void {
+    this.print(Level.Debug, contents);
+  }
+
+  public info(...contents: Array<any>): void {
+    this.print(Level.Info, contents);
+  }
+
+  public warn(...contents: Array<any>): void {
+    this.print(Level.Warn, contents);
+  }
+
+  public error(...contents: Array<any>): void {
+    this.print(Level.Error, contents);
+  }
+
+  public fatal(...contents: Array<any>): void {
+    this.print(Level.Fatal, contents);
+    process.exit();
+  }
+
+  public perf(label: string): void {
+    if (label in this.pf) {
+        this.print(Level.Perf, [`task ${this.tag(label)} finished in \x1b[33m${Date.now() - this.pf[label]}ms\x1b[0m`]);
+        delete this.pf[label];
+    } else {
+        this.pf[label] = Date.now();
+        this.print(Level.Perf, [`task ${this.tag(label)} started`])
+    }
+  }
+
+  public tag(s: any): string {
+    return `\x1b[36m${this.str(s)}\x1b[0m`
+  }
+}
+export enum Level {
+  Debug,
+  Perf,
+  Info,
+  Warn,
+  Error,
+  Fatal,
+}
+
+export const tracing = new Tracing(Level.Perf);
