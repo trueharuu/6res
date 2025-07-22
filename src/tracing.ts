@@ -85,4 +85,4 @@ export enum Level {
   Fatal,
 }
 
-export const tracing = new Tracing(Level.Perf);
+export const tracing = new Tracing(Level.Warn);
