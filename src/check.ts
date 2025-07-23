@@ -6,9 +6,9 @@ export function check_settings(room: RoomOptions) {
     fixes.push("options.boardwidth=4");
   }
 
-  if (room.gincrease !== 0) {
-    fixes.push("options.gincrease=0");
-  }
+  // if (room.gincrease !== 0) {
+  //   fixes.push("options.gincrease=0");
+  // }
 
   if (room.kickset !== "SRS-X") {
     fixes.push("options.kickset=SRS-X");
