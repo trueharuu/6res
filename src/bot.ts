@@ -12,9 +12,9 @@ import { check_settings } from "./check";
 export class Bot {
   public fps: number = 60;
   public pps: number = 4;
-  public vision: number = 14;
-  public foresight: number = 1;
-  private spool!: ChildProcessWithoutNullStreams;
+  public vision: number = 7;
+  public foresight: number = 0;
+  public spool!: ChildProcessWithoutNullStreams;
   private buffer = "";
   private resolver: ((s: string) => void) | null = null;
   public can180: boolean = true;
@@ -126,7 +126,7 @@ export class Bot {
     const z = this.can180 ? 1 : 0;
     const input = `${b} ${q} ${h} ${this.vision} ${this.foresight} ${z}`;
     const t = await this.send(input);
-    tracing.debug("recv", t);
+    // tracing.debug("recv", t);
     if (t) {
       const [piece, fin] = t.split(" ");
       const finesse = (fin || "").split(",").filter((x) => !!x) as Key[];
@@ -138,87 +138,5 @@ export class Bot {
 
   public async save(): Promise<void> {
     await this.send("ex");
-  }
-
-  public async handle_command(room: Room, command: Array<string>) {
-    if (command[0] === "check") {
-      const results = check_settings(room.options);
-
-      if (results.length === 0) {
-        await room.chat("all ok!");
-        return;
-      }
-
-      await room.chat("something is bad! paste the following to apply fixes:");
-      await room.chat("/set " + results.join(";"));
-    }
-
-    if (command[0] === "pps") {
-      const n = Number(command[1]);
-      if (Number.isNaN(n)) {
-        return await room.chat("not a number");
-      }
-
-      if (n > 30) {
-        return await room.chat("no! (pps must be <= 30)");
-      }
-
-      this.pps = n;
-    }
-
-    if (command[0] === "vision") {
-      const n = Number(command[1]);
-      if (Number.isNaN(n)) {
-        return await room.chat("not a number");
-      }
-
-      if (n > 35 || n < 0) {
-        return await room.chat("no! (vision must be <= 35)");
-      }
-
-      this.vision = n;
-    }
-
-    if (command[0] === "foresight") {
-      const n = Number(command[1]);
-      if (Number.isNaN(n)) {
-        return await room.chat("not a number");
-      }
-
-      if (n > 7 || n < 0) {
-        return await room.chat("no! (foresight must be <= 7)");
-      }
-
-      this.foresight = n;
-    }
-
-    if (command[0] === "can180") {
-      const y = ["true", "1", "yes", "y"];
-      const n = ["false", "0", "no", "n"];
-
-      if (y.includes(command[1]?.toLowerCase())) {
-        this.can180 = true;
-      } else if (n.includes(command[1]?.toLowerCase())) {
-        this.can180 = false;
-      } else {
-        return await room.chat("not a boolean");
-      }
-    }
-
-    if (command[0] === "finesse") {
-      if (command[1] === "human") {
-        this.finesse = "human";
-      } else if (command[1] === "instant") {
-        this.finesse = "instant";
-      } else {
-        return await room.chat('no! (finesse must be one of: "human", "instant")')
-      }
-    }
-
-    if (command[0] === "settings") {
-      return await room.chat(
-        `pps=${this.pps}; vision=${this.vision}; foresight=${this.foresight}; can180=${this.can180}; finesse=${this.finesse}`
-      );
-    }
   }
 }

@@ -29,7 +29,7 @@ export class Tracing {
       case Level.Debug:
         return "\x1b[34mDEBUG\x1b[0m";
       case Level.Perf:
-        return "\x1b[35m PERF\x1b[0m";
+        return "\x1b[36m PERF\x1b[0m";
       case Level.Info:
         return "\x1b[32m INFO\x1b[0m";
       case Level.Warn:
@@ -37,7 +37,7 @@ export class Tracing {
       case Level.Error:
         return "\x1b[31mERROR\x1b[0m";
       case Level.Fatal:
-        return "\x1b[31mFATAL\x1b[0m";
+        return "\x1b[1;31mFATAL\x1b[0m";
     }
   }
 
@@ -64,16 +64,22 @@ export class Tracing {
 
   public perf(label: string): void {
     if (label in this.pf) {
-        this.print(Level.Perf, [`task ${this.tag(label)} finished in \x1b[33m${Date.now() - this.pf[label]}ms\x1b[0m`]);
-        delete this.pf[label];
+      this.print(Level.Perf, [
+        `task ${this.tag(label)} finished in \x1b[33m${Date.now() - this.pf[label]}ms\x1b[0m`,
+      ]);
+      delete this.pf[label];
     } else {
-        this.pf[label] = Date.now();
-        this.print(Level.Perf, [`task ${this.tag(label)} started`])
+      this.pf[label] = Date.now();
+      this.print(Level.Perf, [`task ${this.tag(label)} started`]);
     }
   }
 
   public tag(s: any): string {
-    return `\x1b[36m${this.str(s)}\x1b[0m`
+    return `\x1b[35m${this.str(s)}\x1b[0m`;
+  }
+
+  public safe<T>(e: T) {
+    this.error(e);
   }
 }
 export enum Level {

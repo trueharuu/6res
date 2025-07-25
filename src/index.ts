@@ -8,6 +8,9 @@ import { tracing } from "./tracing";
 import { Instance } from "./instance";
 // import { displayBoard, getNextBoards, hashBoard, unhashBoard } from "./usm";
 
+process.on("unhandledRejection", (c) => {
+  tracing.error(c);
+});
 // import * as solver_lib from "./usm/solver_lib";
 (async () => {
   const login = {
@@ -35,6 +38,8 @@ import { Instance } from "./instance";
     await master.social.friend(c._id);
   });
 
+  // tracing.info(master.social.friends.map((x) => `${x.username} ${x.id}`));
+
   const is: Array<Instance> = [];
 
   master.on("social.invite", async (c) => {
@@ -47,11 +52,13 @@ import { Instance } from "./instance";
 
   process.on("SIGINT", async (c) => {
     for (const i of is) {
-      await i.kill();
+      try {
+        await i.kill().catch(tracing.safe);
+      } catch {}
     }
 
     await master.destroy();
-    tracing.fatal('got an interrupt');
+    tracing.fatal("got an interrupt");
 
     // process.exit(1);
   });
