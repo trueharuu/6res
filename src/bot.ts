@@ -12,6 +12,7 @@ import { check_settings } from "./check";
 export class Bot {
   public fps: number = 60;
   public pps: number = 4;
+  public burst: number = 6;
   public vision: number = 7;
   public foresight: number = 0;
   public spool!: ChildProcessWithoutNullStreams;
@@ -20,13 +21,29 @@ export class Bot {
   public can180: boolean = true;
   public finesse: string = "human";
 
+  public bursting: boolean = false;
+
+  public local_pps(): number {
+    if (this.bursting) {
+      return this.burst;
+    }
+
+    return this.pps;
+  }
+
   public constructor(public room: Room) {
     this.reset();
   }
 
   private acc: number = 0;
   public async tick(c: Types.Game.Tick.In) {
-    this.acc += this.pps / this.fps;
+    if (c.engine.stats.combo < 100) {
+      this.bursting = true;
+    } else {
+      this.bursting = false;
+    }
+
+    this.acc += this.local_pps() / this.fps;
 
     const keys: Array<KeyPress> = [];
 
@@ -47,7 +64,7 @@ export class Bot {
     const keys: Array<KeyPress> = [];
     if (this.finesse === "human") {
       // if playing at `p` pps then each input should take `fps/pps/n` frames for a piece that needs `n` inputs
-      let delta = this.fps / this.pps / ks.length;
+      let delta = this.fps / this.local_pps() / ks.length;
       for (let i = 0; i < ks.length; i++) {
         const whole = frame + Math.floor(i * delta);
         const fract = i * delta - Math.floor(i * delta);
@@ -106,7 +123,7 @@ export class Bot {
   }
 
   public async send(input: string): Promise<string> {
-    tracing.debug("send", input);
+    // tracing.debug("send", input);
 
     return new Promise<string>((resolve) => {
       this.resolver = resolve;
@@ -130,7 +147,7 @@ export class Bot {
     if (t) {
       const [piece, fin] = t.split(" ");
       const finesse = (fin || "").split(",").filter((x) => !!x) as Key[];
-      tracing.debug(piece, finesse);
+      // tracing.debug(piece, finesse);
       return finesse;
     }
     return [];

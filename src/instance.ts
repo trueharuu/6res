@@ -33,7 +33,7 @@ export class Instance {
       await this.onGameRoundStart(c);
     });
 
-    this.cl.on("client.game.round.end", async (c) => {
+    this.cl.on("client.game.end", async (c) => {
       await this.onGameRoundEnd(c);
     });
 
@@ -172,21 +172,37 @@ export class Instance {
       }
     }
 
+    if (argv[0] === "burst") {
+      const n = Number(argv[1]);
+      if (Number.isNaN(n)) {
+        return await this.room.chat("no! (not a number)");
+      }
+
+      if (n > 30 || n < 0) {
+        return await this.room.chat("no! (must be 0 <= burst <= 30)");
+      }
+
+      await this.room.chat(`ok burst=${n}`);
+
+      this.bot.burst = n;
+    }
+
     if (argv[0] === "preset") {
       const presets = {
-        algebruh: [3.5, 6, 2, false, "human"],
-        madkiwi: [4.0, 7, 1, true, "human"],
-        usm: [1.5, 6, 2, true, "human"],
-        mina: [4.0, 5, 1, true, "human"],
-        marqueese: [5, 4, 1, false, "human"],
-        bot: [5, 14, 1, true, "instant"],
+        algebruh: [3.5, 3.5, 6, 2, false, "human"],
+        madkiwi: [4.0, 5.5, 7, 1, true, "human"],
+        usm: [1.5, 2.5, 5, 2, true, "human"],
+        mina: [4.0, 6, 5, 1, true, "human"],
+        marqueese: [5, 8, 4, 1, false, "human"],
+        bot: [5.0, 10.0, 14, 1, true, "instant"],
       };
 
       if (argv[1] in presets) {
-        const [pps, vision, foresight, can180, finesse] = presets[
+        const [pps, burst, vision, foresight, can180, finesse] = presets[
           argv[1] as never
-        ] as [number, number, number, boolean, string];
+        ] as [number, number, number, number, boolean, string];
         this.bot.pps = pps;
+        this.bot.burst = burst;
         this.bot.vision = vision;
         this.bot.foresight = foresight;
         this.bot.can180 = can180;
@@ -206,7 +222,7 @@ export class Instance {
 
   public async sendSettings() {
     return await this.room.chat(
-      `set to pps=${this.bot.pps}; vision=${this.bot.vision}; foresight=${this.bot.foresight}; finesse=${this.bot.finesse}; can180=${this.bot.can180}`
+      `set to pps=${this.bot.pps}; burst=${this.bot.burst}; vision=${this.bot.vision}; foresight=${this.bot.foresight}; finesse=${this.bot.finesse}; can180=${this.bot.can180}`
     );
   }
 
@@ -221,15 +237,18 @@ export class Instance {
     });
   }
 
-  public async onGameRoundEnd(c: Types.Events.in.all["client.game.round.end"]) {
+  public async onGameRoundEnd(c: Types.Events.in.all["client.game.end"]) {
     await this.bot.save();
     await this.bot.reset();
 
     if (this.room.players.some((x) => x._id === this.cl.user.id)) {
-      if (c === this.cl.user.id) {
-        return await this.room.chat(":happy:");
-      } else {
-        return await this.room.chat(":sad:");
+      const won = c.players.filter((x) => x.won);
+      if (won.length) {
+        if (won.some((x) => x.id === this.cl.user.id)) {
+          return await this.room.chat(":happy:");
+        } else {
+          return await this.room.chat(":sad:");
+        }
       }
     }
   }

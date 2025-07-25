@@ -38,6 +38,8 @@ process.on("unhandledRejection", (c) => {
     await master.social.friend(c._id);
   });
 
+  
+
   // tracing.info(master.social.friends.map((x) => `${x.username} ${x.id}`));
 
   const is: Array<Instance> = [];
