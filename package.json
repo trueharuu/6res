@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@haelp/teto": "^3.2.2",
+    "@haelp/teto": "latest",
     "@types/node": "^24.0.7",
     "dotenv": "^17.0.0",
     "msgpackr": "^1.11.4",

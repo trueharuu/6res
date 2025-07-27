@@ -1,4 +1,4 @@
-import { Classes, Client, Types } from "@haelp/teto";
+import { Classes, Client, Types } from "@";
 import { Room } from "./ty";
 import { check_settings } from "./check";
 import { tracing } from "./tracing";
@@ -9,6 +9,114 @@ export class Instance {
   private cl!: Client;
   private room!: Room;
   private bot!: Bot;
+
+  private readonly presets: Record<string, BotOptions> = {
+    algebruh: {
+      pps: 3.75,
+      burst: 4.25,
+      slack: 3.25,
+      vision: 8,
+      foresight: 0,
+      can180: false,
+      finesse: FinesseStyle.Human,
+      start_threshold: 50,
+      break_threshold: 5,
+      garbage_threshold: 30,
+      pace: true,
+    },
+    slowbruh: {
+      pps: 2,
+      burst: 2.5,
+      slack: 2,
+      vision: 8,
+      foresight: 2,
+      can180: false,
+      finesse: FinesseStyle.Human,
+      start_threshold: 0,
+      break_threshold: 10,
+      garbage_threshold: 0,
+      pace: true,
+    },
+    madkiwi: {
+      pps: 3,
+      burst: 4.5,
+      slack: 2.5,
+      vision: 8,
+      foresight: 1,
+      can180: true,
+      finesse: FinesseStyle.Human,
+      start_threshold: 100,
+      break_threshold: 10,
+      garbage_threshold: 0,
+      pace: true,
+    },
+    rns: {
+      pps: 2,
+      burst: 4,
+      slack: 0.25,
+      vision: 9,
+      foresight: 1,
+      can180: true,
+      finesse: FinesseStyle.Human,
+      start_threshold: 4,
+      break_threshold: 0,
+      garbage_threshold: 1e9,
+      pace: true,
+    },
+    mina: {
+      pps: 3.75,
+      burst: 5,
+      slack: 3.25,
+      vision: 4,
+      foresight: 1,
+      can180: true,
+      finesse: FinesseStyle.Human,
+      start_threshold: 100,
+      break_threshold: 15,
+      garbage_threshold: 150,
+      pace: true,
+    },
+    bot: {
+      pps: 4,
+      burst: 4,
+      slack: 4,
+      vision: 14,
+      foresight: 1,
+      can180: true,
+      finesse: FinesseStyle.Instant,
+      start_threshold: 0,
+      break_threshold: 0,
+      garbage_threshold: 0,
+      pace: false,
+    },
+    impossible: {
+      pps: 5,
+      burst: 5,
+      slack: 5,
+      vision: 28,
+      foresight: 1,
+      can180: true,
+      finesse: FinesseStyle.Instant,
+      start_threshold: 0,
+      break_threshold: 0,
+      garbage_threshold: 0,
+      pace: false,
+    },
+    cancel: {
+      pps: 1,
+      burst: 20,
+      slack: 1,
+      vision: 4,
+      foresight: 1,
+      can180: true,
+      finesse: FinesseStyle.Instant,
+      start_threshold: 0,
+      break_threshold: 0,
+      garbage_threshold: 0,
+      pace: true,
+    },
+  } as const;
+
   public constructor(
     private options: Classes.ClientOptions,
     private code: string
@@ -292,123 +400,13 @@ export class Instance {
     }
 
     if (argv[0] === "preset") {
-      const presets: Record<string, BotOptions> = {
-        algebruh: {
-          pps: 3.75,
-          burst: 4.25,
-          slack: 3.25,
-          vision: 8,
-          foresight: 0,
-          can180: false,
-          finesse: FinesseStyle.Human,
-          start_threshold: 50,
-          break_threshold: 5,
-          garbage_threshold: 30,
-          pace: true,
-        },
-        slowbruh: {
-          pps: 2,
-          burst: 2.5,
-          slack: 2,
-          vision: 8,
-          foresight: 2,
-          can180: false,
-          finesse: FinesseStyle.Human,
-          start_threshold: 0,
-          break_threshold: 10,
-          garbage_threshold: 0,
-          pace: true,
-        },
-        madkiwi: {
-          pps: 3,
-          burst: 4.5,
-          slack: 2.5,
-          vision: 8,
-          foresight: 1,
-          can180: true,
-          finesse: FinesseStyle.Human,
-          start_threshold: 100,
-          break_threshold: 10,
-          garbage_threshold: 0,
-          pace: true,
-        },
-        rns: {
-          pps: 2,
-          burst: 4,
-          slack: 0.25,
-          vision: 9,
-          foresight: 1,
-          can180: true,
-          finesse: FinesseStyle.Human,
-          start_threshold: 4,
-          break_threshold: 0,
-          garbage_threshold: 1e9,
-          pace: true,
-        },
-        bot: {
-          pps: 4,
-          burst: 4,
-          slack: 4,
-          vision: 14,
-          foresight: 1,
-          can180: true,
-          finesse: FinesseStyle.Instant,
-          start_threshold: 0,
-          break_threshold: 0,
-          garbage_threshold: 0,
-          pace: false,
-        },
-
-        impossible: {
-          pps: 5,
-          burst: 5,
-          slack: 5,
-          vision: 28,
-          foresight: 1,
-          can180: true,
-          finesse: FinesseStyle.Instant,
-          start_threshold: 0,
-          break_threshold: 0,
-          garbage_threshold: 0,
-          pace: false,
-        },
-
-        zoom: {
-          pps: 10,
-          burst: 10,
-          slack: 10,
-          vision: 28,
-          foresight: 1,
-          can180: true,
-          finesse: FinesseStyle.Instant,
-          start_threshold: 0,
-          break_threshold: 0,
-          garbage_threshold: 0,
-          pace: false,
-        },
-
-        cancel: {
-          pps: 1,
-          burst: 20,
-          slack: 1,
-          vision: 4,
-          foresight: 1,
-          can180: true,
-          finesse: FinesseStyle.Instant,
-          start_threshold: 0,
-          break_threshold: 0,
-          garbage_threshold: 0,
-          pace: true,
-        },
-      } as const;
-
-      if (argv[1] in presets) {
-        this.bot.options = presets[argv[1]];
+      if (argv[1] in this.presets) {
+        this.bot.options = this.presets[argv[1]];
         return await this.sendSettings();
       } else {
         return await this.room.chat(
-          `no! (unknown preset; presets are ${Object.keys(presets)
-            .map((x) => `"${x}"`)
+          `no! (unknown preset; presets are ${Object.keys(this.presets)
+
             .join(", ")})`
         );
       }
@@ -417,13 +415,23 @@ export class Instance {
 
   public async sendHelp(c?: string) {
     if (c) {
+      if (c === "help") {
+        return await this.room.chat("it's this one");
+      }
+
+      if (c === "preset") {
+        return await this.room.chat(
+          `available presets are: ${Object.keys(this.presets).join(", ")}`
+        );
+      }
+
       if (c in this.bot.options) {
         return await this.room.chat(
           `${c}:\n${option_descriptions[c as keyof typeof option_descriptions]}`
         );
       }
 
-      return await this.room.chat("no! (not a command)");
+      return await this.room.chat("no! (not an option)");
     }
 
     return await this.room.chat(

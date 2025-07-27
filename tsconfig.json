@@ -5,7 +5,8 @@
     "target": "ESNext",
     "strict": true,
     "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "moduleResolution": "nodenext"
   },
+
   "exclude": ["node_modules/**"]
 }

@@ -77,9 +77,9 @@ export class Bot {
     if (!this.options.pace) {
       return Pace.Normal;
     }
-    
+
     if (c.engine.garbageQueue.size > this.options.garbage_threshold) {
-      return Pace.Burst;
+      return Pace.Slack; // slow down when recieving garbage
     }
 
     if (c.engine.stats.pieces < this.options.start_threshold) {

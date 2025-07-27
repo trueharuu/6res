@@ -11,6 +11,9 @@ import { Instance } from "./instance";
 process.on("unhandledRejection", (c) => {
   tracing.error(c);
 });
+process.on("uncaughtException", (c) => {
+  tracing.error(c);
+});
 // import * as solver_lib from "./usm/solver_lib";
 (async () => {
   const login = {
@@ -35,10 +38,8 @@ process.on("unhandledRejection", (c) => {
   tracing.perf("init");
 
   master.on("social.relation.add", async (c) => {
-    await master.social.friend(c._id);
+    await master.social.friend(c._id).catch(tracing.safe);
   });
-
-  
 
   // tracing.info(master.social.friends.map((x) => `${x.username} ${x.id}`));
 
@@ -55,7 +56,7 @@ process.on("unhandledRejection", (c) => {
   process.on("SIGINT", async (c) => {
     for (const i of is) {
       try {
-        await i.kill().catch(tracing.safe);
+        i.kill().catch(tracing.safe);
       } catch {}
     }
 
