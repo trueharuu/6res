@@ -244,7 +244,7 @@ export class Bot {
     ).toUpperCase();
     const h = c.engine.held?.toUpperCase() || "_";
     const z = this.options.can180 ? 1 : 0;
-    const input = `${b} ${q} ${h} ${this.options.vision} ${this.options.foresight} ${z} ${+this.should_upstack(c)}`;
+    const input = `ren ${b} ${q} ${h} ${this.options.vision} ${this.options.foresight} ${z} ${+this.should_upstack(c)}`;
     tracing.debug("send", input);
     const t = await this.send(input);
     tracing.debug("recv", t);

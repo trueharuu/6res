@@ -83,13 +83,15 @@ export class Tracing {
   }
 }
 export enum Level {
-  Debug = 'DEBUG',
-  Perf = 'PERF',
-  Info = 'INFO',
-  Warn = 'WARN',
-  Error = 'ERROR',
-  Fatal = 'FATAL',
+  Debug = "DEBUG",
+  Perf = "PERF",
+  Info = "INFO",
+  Warn = "WARN",
+  Error = "ERROR",
+  Fatal = "FATAL",
 }
 
-import 'dotenv/config.js'
-export const tracing = new Tracing(process.env.TRACING!.toUpperCase() as Level || Level.Info);
+import "dotenv/config.js";
+export const tracing = new Tracing(
+  (process.env.TRACING!.toUpperCase() as Level) || Level.Info
+);
