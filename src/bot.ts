@@ -32,7 +32,9 @@ export interface BotOptions {
   start_threshold: number;
   break_threshold: number;
   garbage_threshold: number;
+  gb_weight: number;
   pace: boolean;
+  upstack: boolean;
 }
 
 export const option_descriptions: Record<keyof BotOptions, string> = {
@@ -49,8 +51,11 @@ export const option_descriptions: Record<keyof BotOptions, string> = {
   break_threshold:
     "the amount of pieces after breaking combo to stay in [slack]",
   garbage_threshold:
-    "amount of incoming garbage to be okay with before entering [burst]",
-  pace: "whether to enable pacing with [burst] and [slack]",
+    "amount of incoming garbage to be okay with before changing pace",
+  gb_weight:
+    "determines behaviour for when recieving garbage. negative to enter [slack], positive to enter [burst].",
+  pace: "whether to enable pacing with [burst], [slack], and any threshold options",
+  upstack: "whether to stack up ever",
 };
 
 export class Bot {
@@ -70,35 +75,68 @@ export class Bot {
     start_threshold: 100,
     break_threshold: 10,
     garbage_threshold: 260,
+    gb_weight: -1,
     pace: false,
+    upstack: false,
   };
 
-  public pace(c: Types.Game.Tick.In): Pace {
+  // dawg what the fuckkkkkkkkk
+  public local_pps(c: Types.Game.Tick.In): number {
     if (!this.options.pace) {
-      return Pace.Normal;
+      return this.options.pps;
     }
 
     if (c.engine.garbageQueue.size > this.options.garbage_threshold) {
-      return Pace.Slack; // slow down when recieving garbage
+      if (this.options.gb_weight > 0) {
+        return (
+          this.options.pps +
+          this.options.gb_weight * (this.options.burst - this.options.pps)
+        );
+      }
+
+      if (this.options.gb_weight < 0) {
+        return (
+          this.options.pps +
+          this.options.gb_weight * (this.options.slack - this.options.pps)
+        );
+      }
     }
 
     if (c.engine.stats.pieces < this.options.start_threshold) {
-      return Pace.Burst;
+      return this.options.burst;
     }
 
     if (c.engine.stats.combo < this.options.break_threshold) {
-      return Pace.Slack;
+      return this.options.slack;
     }
 
-    return Pace.Normal;
+    return this.options.pps;
   }
 
-  public local_pps(c: Types.Game.Tick.In): number {
-    return {
-      [Pace.Burst]: this.options.burst,
-      [Pace.Normal]: this.options.pps,
-      [Pace.Slack]: this.options.slack,
-    }[this.pace(c)];
+  public mino_count(c: Types.Game.Tick.In): number {
+    return c.engine.board.state.flat().filter((x) => x !== null).length;
+  }
+
+  public should_upstack(c: Types.Game.Tick.In): boolean {
+    if (!this.options.upstack) {
+      return false;
+    }
+
+    const ctr = this.mino_count(c);
+
+    // // if (c.engine.garbageQueue.size > this.room.options.garbagecap) {
+    // //   return false;
+    // // }
+
+    if (c.engine.stats.combo > 10) {
+      return false;
+    }
+
+    if (ctr >= 12) {
+      return false;
+    }
+
+    return true;
   }
 
   public constructor(public room: Room) {
@@ -112,7 +150,7 @@ export class Bot {
     const keys: Array<KeyPress> = [];
 
     while (this.acc >= 1) {
-      let ks = await this.key_queue(c.engine);
+      let ks = await this.key_queue(c);
       ks.push("hardDrop");
       ks = ks.flatMap((x) => ["softDrop", x]);
       keys.push(...this.key_presses(ks, c));
@@ -195,19 +233,20 @@ export class Bot {
     });
   }
 
-  public async key_queue(engine: Engine): Promise<Array<Key>> {
-    const b = engine.board.state
+  public async key_queue(c: Types.Game.Tick.In): Promise<Array<Key>> {
+    const b = c.engine.board.state
       .map((x) => x.map((y) => (y === null ? "_" : "X")).join(""))
       .toReversed()
       .join("|");
     const q = (
-      engine.falling.symbol + engine.queue.value.join("")
+      c.engine.falling.symbol + c.engine.queue.value.join("")
     ).toUpperCase();
-    const h = engine.held?.toUpperCase() || "_";
+    const h = c.engine.held?.toUpperCase() || "_";
     const z = this.options.can180 ? 1 : 0;
-    const input = `${b} ${q} ${h} ${this.options.vision} ${this.options.foresight} ${z}`;
+    const input = `${b} ${q} ${h} ${this.options.vision} ${this.options.foresight} ${z} ${+this.should_upstack(c)}`;
+    tracing.debug("send", input)
     const t = await this.send(input);
-    // tracing.debug("recv", t);
+    tracing.debug("recv", t);
     if (t) {
       const [piece, fin] = t.split(" ");
       const finesse = (fin || "").split(",").filter((x) => !!x) as Key[];

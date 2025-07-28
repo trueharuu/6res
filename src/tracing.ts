@@ -83,12 +83,12 @@ export class Tracing {
   }
 }
 export enum Level {
-  Debug,
-  Perf,
-  Info,
-  Warn,
-  Error,
-  Fatal,
+  Debug = 'DEBUG',
+  Perf = 'PERF',
+  Info = 'INFO',
+  Warn = 'WARN',
+  Error = 'ERROR',
+  Fatal = 'FATAL',
 }
 
-export const tracing = new Tracing(Level.Debug);
+export const tracing = new Tracing(process.env.TRACING!.toUpperCase() as Level || Level.Info);

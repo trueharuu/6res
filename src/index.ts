@@ -54,15 +54,9 @@ process.on("uncaughtException", (c) => {
   });
 
   process.on("SIGINT", async (c) => {
-    for (const i of is) {
-      try {
-        i.kill().catch(tracing.safe);
-      } catch {}
-    }
-
     await master.destroy();
-    tracing.fatal("got an interrupt");
-
-    // process.exit(1);
+    setTimeout(() => {
+      tracing.fatal('max timeout hit')
+    }, 1000);
   });
 })();

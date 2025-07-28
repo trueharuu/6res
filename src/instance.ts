@@ -1,4 +1,4 @@
-import { Classes, Client, Types } from "@";
+import { Classes, Client, Types } from "@haelp/teto";
 import { Room } from "./ty";
 import { check_settings } from "./check";
 import { tracing } from "./tracing";
@@ -22,7 +22,9 @@ export class Instance {
       start_threshold: 50,
       break_threshold: 5,
       garbage_threshold: 30,
+      gb_weight: -1,
       pace: true,
+      upstack: true,
     },
     slowbruh: {
       pps: 2,
@@ -35,7 +37,9 @@ export class Instance {
       start_threshold: 0,
       break_threshold: 10,
       garbage_threshold: 0,
+      gb_weight: 0,
       pace: true,
+      upstack: true,
     },
     madkiwi: {
       pps: 3,
@@ -48,7 +52,9 @@ export class Instance {
       start_threshold: 100,
       break_threshold: 10,
       garbage_threshold: 0,
+      gb_weight: 1,
       pace: true,
+      upstack: true,
     },
     rns: {
       pps: 2,
@@ -61,7 +67,9 @@ export class Instance {
       start_threshold: 4,
       break_threshold: 0,
       garbage_threshold: 1e9,
+      gb_weight: 0,
       pace: true,
+      upstack: true,
     },
     mina: {
       pps: 3.75,
@@ -74,7 +82,9 @@ export class Instance {
       start_threshold: 100,
       break_threshold: 15,
       garbage_threshold: 150,
+      gb_weight: -1,
       pace: true,
+      upstack: true,
     },
     bot: {
       pps: 4,
@@ -87,7 +97,9 @@ export class Instance {
       start_threshold: 0,
       break_threshold: 0,
       garbage_threshold: 0,
+      gb_weight: 0,
       pace: false,
+      upstack: true,
     },
     impossible: {
       pps: 5,
@@ -100,7 +112,9 @@ export class Instance {
       start_threshold: 0,
       break_threshold: 0,
       garbage_threshold: 0,
+      gb_weight: 0,
       pace: false,
+      upstack: true,
     },
     cancel: {
       pps: 1,
@@ -113,14 +127,22 @@ export class Instance {
       start_threshold: 0,
       break_threshold: 0,
       garbage_threshold: 0,
+      gb_weight: 1,
       pace: true,
+      upstack: true,
     },
   } as const;
 
+  public dead: boolean = false;
   public constructor(
     private options: Classes.ClientOptions,
     private code: string
-  ) {}
+  ) {
+    process.on("SIGINT", async (c) => {
+      tracing.error(`sigint ${this.code}`);
+      await this.kill();
+    });
+  }
   public async spawn() {
     this.cl = await Client.connect(this.options);
     tracing.info("created a client for", tracing.tag(this.code));
@@ -179,16 +201,12 @@ export class Instance {
     });
   }
 
+  private lock: boolean = false;
   public async kill() {
-    try {
-      this.bot.spool.kill();
-      await this.room.chat(":crying:");
-      await this.room.leave().catch(tracing.safe);
-    } catch {}
+    this.bot.spool.kill();
+    await this.room.chat(":crying:");
+    await this.room.leave();
 
-    try {
-      await this.cl.destroy();
-    } catch {}
     tracing.warn(tracing.tag(this.code), "was killed");
   }
 
@@ -316,6 +334,18 @@ export class Instance {
       }
     }
 
+    if (argv[0] === "upstack") {
+      if (argv[1] === "true") {
+        this.bot.options.upstack = true;
+      } else if (argv[1] === "false") {
+        this.bot.options.upstack = false;
+      } else {
+        return await this.room.chat(
+          'no! (upstack must be one of "true" | "false")'
+        );
+      }
+    }
+
     if (argv[0] === "finesse") {
       if (argv[1] === "human") {
         this.bot.options.finesse = FinesseStyle.Human;
@@ -387,11 +417,32 @@ export class Instance {
       this.bot.options.garbage_threshold = n;
     }
 
+    if (argv[0] === "gb_weight") {
+      const n = Number(argv[1]);
+      if (Number.isNaN(n)) {
+        return await this.room.chat("no! (not a number)");
+      }
+
+      if (!this.bot.options.pace) {
+        await this.paceWarning();
+      }
+
+      if (n < -1 || n > 1) {
+        return await this.room.chat("no! (must be -1 < weight < 1)");
+      }
+
+      await this.room.chat(`ok gb_weight=${n}`);
+
+      this.bot.options.gb_weight = n;
+    }
+
     if (argv[0] === "pace") {
       if (argv[1] === "true") {
         this.bot.options.pace = true;
+        return await this.room.chat("ok pace=true");
       } else if (argv[1] === "false") {
         this.bot.options.pace = false;
+        return await this.room.chat("ok pace=false");
       } else {
         return await this.room.chat(
           'no! (pace must be one of "true" | "false")'
@@ -402,12 +453,11 @@ export class Instance {
     if (argv[0] === "preset") {
       if (argv[1] in this.presets) {
         this.bot.options = this.presets[argv[1]];
+
         return await this.sendSettings();
       } else {
         return await this.room.chat(
-          `no! (unknown preset; presets are ${Object.keys(this.presets)
-
-            .join(", ")})`
+          `no! (unknown preset; presets are ${Object.keys(this.presets).join(", ")})`
         );
       }
     }
