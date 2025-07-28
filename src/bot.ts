@@ -77,7 +77,7 @@ export class Bot {
     garbage_threshold: 260,
     gb_weight: -1,
     pace: false,
-    upstack: false,
+    upstack: true,
   };
 
   // dawg what the fuckkkkkkkkk
@@ -128,7 +128,7 @@ export class Bot {
     // //   return false;
     // // }
 
-    if (c.engine.stats.combo > 10) {
+    if (c.engine.stats.combo > 7) {
       return false;
     }
 
@@ -164,6 +164,7 @@ export class Bot {
 
   public key_presses(ks: Array<Key>, c: Types.Game.Tick.In): Array<KeyPress> {
     const keys: Array<KeyPress> = [];
+    // keys.push({ frame: c.frame, data: { key: "softDrop", subframe: 0.0 }, type: 'keydown' });
     if (this.options.finesse === FinesseStyle.Human) {
       // if playing at `p` pps then each input should take `fps/pps/n` frames for a piece that needs `n` inputs
       let delta = this.fps / this.local_pps(c) / ks.length;
@@ -244,7 +245,7 @@ export class Bot {
     const h = c.engine.held?.toUpperCase() || "_";
     const z = this.options.can180 ? 1 : 0;
     const input = `${b} ${q} ${h} ${this.options.vision} ${this.options.foresight} ${z} ${+this.should_upstack(c)}`;
-    tracing.debug("send", input)
+    tracing.debug("send", input);
     const t = await this.send(input);
     tracing.debug("recv", t);
     if (t) {

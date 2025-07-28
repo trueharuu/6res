@@ -91,4 +91,5 @@ export enum Level {
   Fatal = 'FATAL',
 }
 
+import 'dotenv/config.js'
 export const tracing = new Tracing(process.env.TRACING!.toUpperCase() as Level || Level.Info);

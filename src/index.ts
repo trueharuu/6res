@@ -8,6 +8,8 @@ import { tracing } from "./tracing";
 import { Instance } from "./instance";
 // import { displayBoard, getNextBoards, hashBoard, unhashBoard } from "./usm";
 
+// console.log(process.env)
+// tracing.debug(tracing.level);
 process.on("unhandledRejection", (c) => {
   tracing.error(c);
 });
