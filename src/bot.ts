@@ -124,6 +124,11 @@ export class Bot {
 
     const ctr = this.mino_count(c);
 
+    // its not called 4res for a reason
+    if (ctr === 4) {
+      return true;
+    }
+
     // // if (c.engine.garbageQueue.size > this.room.options.garbagecap) {
     // //   return false;
     // // }
@@ -133,6 +138,11 @@ export class Bot {
     }
 
     if (ctr >= 12) {
+      return false;
+    }
+
+    // lol
+    if (ctr === 3 || ctr === 6 || ctr === 9) {
       return false;
     }
 
@@ -244,7 +254,8 @@ export class Bot {
     ).toUpperCase();
     const h = c.engine.held?.toUpperCase() || "_";
     const z = this.options.can180 ? 1 : 0;
-    const input = `ren ${b} ${q} ${h} ${this.options.vision} ${this.options.foresight} ${z} ${+this.should_upstack(c)}`;
+    const l = this.room.options.display_hold;
+    const input = `ren ${b} ${q} ${h} ${this.options.vision} ${this.options.foresight} ${z} ${+this.should_upstack(c)} ${+l}`;
     tracing.debug("send", input);
     const t = await this.send(input);
     tracing.debug("recv", t);

@@ -139,13 +139,13 @@ export class Instance {
     private code: string
   ) {
     process.on("SIGINT", async (c) => {
-      tracing.error(`sigint ${this.code}`);
+      // tracing.error(`sigint ${this.code}`);
       await this.kill();
     });
   }
   public async spawn() {
     this.cl = await Client.connect(this.options);
-    tracing.info("created a client for", tracing.tag(this.code));
+    tracing.perf(`join ${this.code}`);
   }
 
   public async join() {
@@ -198,6 +198,8 @@ export class Instance {
 
     this.cl.on("client.game.start", async (c) => {
       await this.room.chat("glhf");
+      await this.bot.save();
+      await this.bot.reset();
     });
   }
 
@@ -207,7 +209,7 @@ export class Instance {
     await this.room.chat(":crying:");
     await this.room.leave();
 
-    tracing.warn(tracing.tag(this.code), "was killed");
+    tracing.error(tracing.tag(this.code), "was killed");
   }
 
   public async onRoomChat(c: Types.Events.in.all["room.chat"]) {
@@ -525,9 +527,6 @@ export class Instance {
   public async onGameRoundStart([
     tick,
   ]: Types.Events.in.all["client.game.round.start"]) {
-    await this.bot.save();
-    await this.bot.reset();
-
     tick(async (c) => {
       return await this.bot.tick(c);
     });

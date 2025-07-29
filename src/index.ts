@@ -48,7 +48,7 @@ process.on("uncaughtException", (c) => {
   const is: Array<Instance> = [];
 
   master.on("social.invite", async (c) => {
-    tracing.info(`got invited to ${tracing.tag(c.roomid)}`);
+    tracing.perf(`join ${c.roomid}`);
     const instance = new Instance(login, c.roomid);
     await instance.spawn();
     await instance.join();
@@ -58,7 +58,7 @@ process.on("uncaughtException", (c) => {
   process.on("SIGINT", async (c) => {
     await master.destroy();
     setTimeout(() => {
-      tracing.fatal('max timeout hit')
+      tracing.fatal("max timeout hit");
     }, 1000);
   });
 })();

@@ -6,16 +6,16 @@ export function check_settings(room: RoomOptions) {
     fixes.push("options.boardwidth=4");
   }
 
-  // if (room.gincrease !== 0) {
-  //   fixes.push("options.gincrease=0");
-  // }
+  if (room.stock !== 0) {
+    fixes.push("options.stock=0");
+  }
 
   if (room.kickset !== "SRS-X") {
     fixes.push("options.kickset=SRS-X");
   }
 
-  if (room.display_hold !== true) {
-    fixes.push("options.display_hold=true");
+  if (!room.allow_harddrop) {
+    fixes.push('options.allow_harddrop=true')
   }
 
   return fixes;
